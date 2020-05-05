@@ -6,6 +6,39 @@ import torch
 from torch.utils.data import Dataset
 import logging
 from PIL import Image
+import pickle
+
+
+class PsdDataset(Dataset):
+    def __init__(self, mixture_file_path, label_file_path, preprocess_type='real'):
+        mixture_file = open(mixture_file_path, 'rb')
+        label_file = open(label_file_path, 'rb')
+        self.mixture_list = pickle.load(mixture_file)
+        self.label_list = pickle.load(label_file)
+        self.preprocess_type = preprocess_type
+        mixture_file.close()
+        label_file.close()
+        logging.info(f'Creating dataset with {len(self.mixture_list)} examples')
+
+    def __len__(self):
+        return len(self.mixture_list)
+
+    @classmethod
+    def preprocess(cls, input_data, type='real'):
+        shape_detect = input_data.shape
+        while len(shape_detect) < 3:
+            input_data = np.expand_dims(input_data, axis=0)
+            shape_detect = input_data.shape
+
+        if type == 'real':
+            return np.real(input_data)
+        elif type == 'imag':
+            return np.imag(input_data)
+
+    def __getitem__(self, i):
+        mixture = self.preprocess(self.mixture_list[i], self.preprocess_type)
+        label = self.preprocess(self.label_list[i], self.preprocess_type)
+        return {'mixture': torch.from_numpy(mixture), 'label': torch.from_numpy(label)}
 
 
 class BasicDataset(Dataset):
@@ -60,3 +93,51 @@ class BasicDataset(Dataset):
         mask = self.preprocess(mask, self.scale)
 
         return {'image': torch.from_numpy(img), 'mask': torch.from_numpy(mask)}
+
+
+class PsdDatasetWithClass(Dataset):
+    def __init__(self, mixture_file_path, label_file_paths, preprocess_type='real'):
+        mixture_file = open(mixture_file_path, 'rb')
+        self.label_list = dict()
+        self.mixture_list = pickle.load(mixture_file)
+        mixture_file.close()
+        for i in range(len(self.mixture_list[0]['label'])):
+            label_file = open(label_file_paths[i], 'rb')
+            self.label_list[i] = pickle.load(label_file)
+            label_file.close()
+        self.preprocess_type = preprocess_type
+        logging.info(f'Creating dataset with {len(self.mixture_list)} examples')
+
+    def __len__(self):
+        return len(self.mixture_list)
+
+    @classmethod
+    def preprocess(cls, input_data, type='real', default_dimension=2):
+        shape_detect = input_data.shape
+        while len(shape_detect) < default_dimension:
+            input_data = np.expand_dims(input_data, axis=0)
+            shape_detect = input_data.shape
+
+        if type == 'real':
+            return np.real(input_data)
+        elif type == 'imag':
+            return np.imag(input_data)
+
+    def __getitem__(self, i):
+        mixture = self.preprocess(self.mixture_list[i]['mixture'], self.preprocess_type)
+        class_label = self.mixture_list[i]['label']
+        source_labels = []
+        for channel_index in range(len(self.mixture_list[i]['label'])):
+            channel = self.mixture_list[i]['label'][channel_index]
+            component_sample_num = len(self.label_list[channel_index])
+            if channel == 1:
+                source_labels.append(self.preprocess(self.label_list[channel_index][i % component_sample_num],
+                                                     self.preprocess_type))
+
+            else:
+                source_labels.append(self.preprocess(np.zeros(self.label_list[channel_index][i % component_sample_num].shape),
+                                                     self.preprocess_type))
+
+        source_labels = np.array(source_labels)
+        return {'mixture': torch.from_numpy(mixture), 'class_label': torch.from_numpy(class_label),
+                'source_labels': torch.from_numpy(source_labels)}

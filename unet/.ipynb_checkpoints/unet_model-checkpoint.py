@@ -27,9 +27,17 @@ class UNet(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
+        #print('direct input', x)
+        #f = open('tensorTest.pickle', 'wb')
+        #pickle.dump(x, f)
+        #f.close()
+        #print(x.shape)
         x1 = self.inc(x)
+        #print(x1.shape)
         x2 = self.down1(x1)
+        #print(x2.shape)
         x3 = self.down2(x2)
+        #print(x3.shape)
         x4 = self.down3(x3)
         x5 = self.down4(x4)
         x = self.up1(x5, x4)

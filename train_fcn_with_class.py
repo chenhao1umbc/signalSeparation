@@ -4,20 +4,17 @@ import os
 import sys
 import pickle
 import torch
+import glob
 import torch.nn as nn
 from torch import optim
 from tqdm import tqdm
 
-from eval import eval_net
-from unet import UNet
+from unet import InitNet
 
 from utils.dataset import PsdDatasetWithClass
-from torch.utils.data import DataLoader, random_split, RandomSampler
+from torch.utils.data import DataLoader, random_split
 
-
-dir_img = 'data/imgs/'
-dir_mask = 'data/masks/'
-dir_checkpoint = 'checkpoints/'
+dir_checkpoint = 'checkpoints_fcn/'
 dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
                   'datasets/dataset_0426_14000_128x20/component/Zigbee.mat.pickle',
@@ -25,10 +22,8 @@ dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
                   'datasets/dataset_0426_14000_128x20/component/ZigbeeBPSK.mat.pickle']
 dir_train_sample_pickle = 'datasets/dataset_0426_14000_128x20/train_set.pickle'
 dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
-training_set_visualization_file_path = 'train_set_visualization.pickle'
-loss_storage_file_path = 'scoreFile.pickle'
-loss_storage_file_path_val = 'scoreFileVal.pickle'
-
+training_set_visualization_file_path = 'train_set_visualization_fcn.pickle'
+loss_storage_file_path = 'scoreFile_fcn.pickle'
 
 
 def train_net(net,
@@ -39,31 +34,17 @@ def train_net(net,
               val_percent=0.1,
               save_cp=True,
               img_scale=0.5,
+              gamma=0,
               dir_mixture=dir_mixture,
               dir_list_label=dir_list_label,
-              override=False):
-
+              override=True):
     dataset = PsdDatasetWithClass(dir_mixture, dir_list_label)
     n_val = int(len(dataset) * val_percent)
     n_train = len(dataset) - n_val
     train, val = random_split(dataset, [n_train, n_val])
-    all_scores_train = []
-    all_scores_val = []
     if not override:
-        print(f'Regenerate random dataset from files!\n'
-              f'mixture file path:{dir_mixture}')
-        train_loader = DataLoader(train, batch_size=batch_size, num_workers=8, pin_memory=True,
-                                  sampler=RandomSampler(train, replacement=True, num_samples=2000))
-        val_loader = DataLoader(val, batch_size=batch_size, num_workers=8, pin_memory=True, drop_last=True,
-                                sampler=RandomSampler(val,replacement=True, num_samples=200))
-
-        train_sample_file = open(dir_train_sample_pickle, 'wb')
-        val_sample_file = open(dir_val_sample_pickle, 'wb')
-        pickle.dump(train_loader, train_sample_file)
-        pickle.dump(val_loader, val_sample_file)
-        train_sample_file.close()
-        val_sample_file.close()
-
+        train_loader = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True)
+        val_loader = DataLoader(val, batch_size=batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
     else:
         print(f'Load dataset from previous generation!\n'
               f'training set path:{dir_train_sample_pickle}\n'
@@ -75,7 +56,8 @@ def train_net(net,
         train_sample_file.close()
         val_sample_file.close()
 
-    #writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}_SCALE_{img_scale}')
+    # writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}_SCALE_{img_scale}')
+    global_step = 0
 
     logging.info(f'''Starting training:
         Epochs:          {epochs}
@@ -85,84 +67,89 @@ def train_net(net,
         Validation size: {n_val}
         Checkpoints:     {save_cp}
         Device:          {device.type}
-        Images scaling:  {img_scale}
     ''')
 
     optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
-    if net.n_classes > 1:
-        criterion = nn.CrossEntropyLoss()
-    else:
-        criterion = nn.MSELoss()
-
+    criterion_class = nn.BCELoss()
+    criterion_component = nn.MSELoss()
     batch_index = 0
+    allScores = []
     for epoch in range(epochs):
         net.train()
         epoch_loss = 0
-        batch_num = 2000/batch_size
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='samples') as pbar:
             for batch in train_loader:
                 batch_index += 1
+                mixture = batch['mixture']
+                class_label = batch['class_label']
+                component_label = batch['source_labels'][:, 0:1, :, :]
 
-                imgs = batch['mixture'].unsqueeze(1)
-                true_masks = batch['source_labels'][:, 0, :, :].unsqueeze(1)
+                mixture = mixture.to(device=device, dtype=torch.float32)
+                component_label = component_label.to(device=device, dtype=torch.float32)
+                class_label = class_label.to(device=device, dtype=torch.float32)
 
-                assert imgs.shape[1] == net.n_channels, \
-                    f'Network has been defined with {net.n_channels} input channels, ' \
-                    f'but loaded images have {imgs.shape[1]} channels. Please check that ' \
-                    'the images are loaded correctly.'
+                component_output, class_output = net(mixture)
 
-                imgs = imgs.to(device=device, dtype=torch.float32)
-                mask_type = torch.float32 if net.n_classes == 1 else torch.long
-                true_masks = true_masks.to(device=device, dtype=mask_type)
-                
-                masks_pred = net(imgs)
+                try:
+                    #classify_loss = criterion_class(class_output, class_label)
+                    classify_loss = 0
+                    component_loss = criterion_component(component_output, component_label)
+                    total_loss = gamma*classify_loss + (1-gamma)*component_loss
+                except RuntimeError:
+                    print(f'input_mixture:{mixture.shape},\n'
+                          f' class_output:{class_output.shape},\n'
+                          f' class_label:{class_label.shape},\n'
+                          f' component_output:{component_output.shape},\n'
+                          f'component_label:{component_label.shape}')
+                    raise Exception
 
-                loss = criterion(masks_pred, true_masks)
-                epoch_loss += loss.item()
+                epoch_loss += total_loss.item()
+                # writer.add_scalar('Loss/train', loss.item(), global_step)
 
-                '''
                 if batch_index == 500:
                     pickle_file = open(training_set_visualization_file_path, 'wb')
-                    pickle.dump({'component_output': masks_pred,
-                                 'class_output': None,
-                                 'mixture': imgs,
-                                 'component_label': true_masks,
-                                 'class_label': None,
-                                 'classify_loss': None,
-                                 'component_loss': loss.item()}, pickle_file)
+                    pickle.dump({'component_output': component_output,
+                                 'class_output': class_output,
+                                 'mixture': mixture,
+                                 'component_label': component_label,
+                                 'class_label': class_label,
+                                 'classify_loss': None, #classify_loss.item(),
+                                 'component_loss': component_loss.item()}, pickle_file)
                     pickle_file.close()
                     print(f'training visualization file stored! File path:{training_set_visualization_file_path}')
 
-                pbar.set_postfix(**{'loss (batch)': loss.item()})
-                '''
+                pbar.set_postfix(**{'loss (batch)': total_loss.item()})
 
                 optimizer.zero_grad()
-                loss.backward()
+                total_loss.backward()
                 nn.utils.clip_grad_value_(net.parameters(), 0.1)
                 optimizer.step()
+                pbar.update(mixture.shape[0])
+                '''
+                global_step += 1
+                if global_step % (len(dataset) // (1 * batch_size)) == 0:
+                    for tag, value in net.named_parameters():
+                        tag = tag.replace('.', '/')
+                        #writer.add_histogram('weights/' + tag, value.data.cpu().numpy(), global_step)
+                        #writer.add_histogram('grads/' + tag, value.grad.data.cpu().numpy(), global_step)
+                    val_score = eval_net(net, val_loader, device)
+                    scheduler.step(val_score)
+                    #writer.add_scalar('learning_rate', optimizer.param_groups[0]['lr'], global_step)
 
-                pbar.update(imgs.shape[0])
+                    if net.n_classes > 1:
+                        logging.info('Validation cross entropy: {}'.format(val_score))
+                        #writer.add_scalar('Loss/test', val_score, global_step)
+                    else:
+                        logging.info('Validation Dice Coeff: {}'.format(val_score))
+                        #writer.add_scalar('Dice/test', val_score, global_step)'''
 
-            val_score = eval_net(net, val_loader, device)
-            scheduler.step(val_score)
-            all_scores_train.append(epoch_loss/batch_num)
-            all_scores_val.append(val_score)
-
-            if net.n_classes > 1:
-                logging.info('Validation cross entropy: {}'.format(val_score))
-            else:
-                logging.info('Validation Dice Coeff: {}'.format(val_score))
-
-            # Store all training loss
-            score_file_train = open(loss_storage_file_path, 'wb')
-            score_file_val = open(loss_storage_file_path_val, 'wb')
-            pickle.dump(all_scores_train, score_file_train)
-            pickle.dump(all_scores_val, score_file_val)
-            score_file_train.close()
-            score_file_val.close()
-            print(f'Training Score file saved! Location:{loss_storage_file_path}\n'
-                  f'Validation Score file saved! Location:{loss_storage_file_path_val}')
+            allScores.append(epoch_loss)
+            # Store all loss
+            scoreFile = open(loss_storage_file_path, 'wb')
+            pickle.dump(allScores, scoreFile)
+            scoreFile.close()
+            print(f'Score file saved! Location: {loss_storage_file_path}')
 
         if save_cp:
             try:
@@ -172,7 +159,7 @@ def train_net(net,
                 pass
             torch.save(net.state_dict(),
                        dir_checkpoint + f'CP_epoch{epoch + 1}.pth')
-            logging.info(f'Checkpoint {epoch + 1} saved !')
+            logging.info(f'Checkpoint {epoch + 1} saved ! dir:{dir_checkpoint}')
 
 
 def get_args():
@@ -200,19 +187,10 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
 
-    # Change here to adapt to your data
-    # n_channels=3 for RGB images
-    # n_classes is the number of probabilities you want to get per pixel
-    #   - For 1 class and background, use n_classes=1
-    #   - For 2 classes, use n_classes=1
-    #   - For N > 2 classes, use n_classes=N
-    
-    #Changed channel number to 1 for STFT images
-    net = UNet(n_channels=1, n_classes=1, bilinear=True)
+    # 4 classes for 4 types of signal
+    net = InitNet(n_classes=1)
     logging.info(f'Network:\n'
-                 f'\t{net.n_channels} input channels\n'
-                 f'\t{net.n_classes} output channels (classes)\n'
-                 f'\t{"Bilinear" if net.bilinear else "Transposed conv"} upscaling')
+                 f'\t{net.n_classes} output channels (classes)\n')
 
     if args.load:
         net.load_state_dict(
@@ -231,8 +209,7 @@ if __name__ == '__main__':
                   lr=args.lr,
                   device=device,
                   img_scale=args.scale,
-                  val_percent=args.val / 100,
-                  override=True)
+                  val_percent=args.val / 100)
     except KeyboardInterrupt:
         torch.save(net.state_dict(), 'INTERRUPTED.pth')
         logging.info('Saved interrupt')

@@ -10,23 +10,26 @@ import torch.nn as nn
 import pickle
 import glob
 from unet import UNet, InitNet
-from utils.dataset import PsdDatasetWithClass
+from utils.dataset import PsdDataset
 from torch.utils.data import DataLoader, random_split
 
 
 dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = glob.glob('datasets/dataset_0426_14000_128x20/component/*.pickle')
-pickle_file_path = './val_output_pickle_file_fcn'
+pickle_file_path = './val_output_pickle_file'
 dir_train_sample_pickle = 'datasets/dataset_0426_14000_128x20/train_set.pickle'
 dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
 val_percent = 0.1
 gamma = 0.5
 
+train_set_file_path = 'report_0430/train_set_visualization_fcn.pickle'
+val_set_root_path = 'val_output_pickle_file_fcn'
+
+
 
 def predict_img(net,
                 device):
     net.eval()
-
     print(f'Load dataset from previous generation!\n'
           f'training set path:{dir_train_sample_pickle}\n'
           f'validation set path:{dir_val_sample_pickle}')
@@ -35,47 +38,57 @@ def predict_img(net,
     val_loader = pickle.load(val_sample_file)
     train_sample_file.close()
     val_sample_file.close()
-
     criterion_class = nn.BCEWithLogitsLoss()
     criterion_component = nn.MSELoss()
 
     for batch in val_loader:
-        mixture = batch['mixture']
-        class_label = batch['class_label']
-        component_label = batch['source_labels'][:, 0:1, :, :]
+
+        train_set_file = open(train_set_file_path, 'rb')
+        train_set_info = pickle.load(train_set_file)
+        mixture = train_set_info['mixture'].unsqueeze(1)
+        component_label = train_set_info['component_label']
+
+        #mixture = batch['mixture'].unsqueeze(1)
+        #component_label = batch['source_labels'][:, 0, :, :].unsqueeze(1)
 
         mixture = mixture.to(device=device, dtype=torch.float32)
         component_label = component_label.to(device=device, dtype=torch.float32)
-        class_label = class_label.to(device=device, dtype=torch.float32)
 
-        component_output, class_output = net(mixture)
+        print(mixture.shape)
+        component_output = net(mixture)
+        # Added for label fitting
+        #component_label_test = component_label[:, 0:1, :, :]
 
         try:
-            #classify_loss = criterion_class(class_output, class_label)
-            classify_loss = 0
+            # classify_loss = criterion_class(class_output, class_label)
             component_loss = criterion_component(component_output, component_label)
-            total_loss = gamma * classify_loss + (1 - gamma) * component_loss
+            # total_loss = gamma * classify_loss + (1 - gamma) * component_loss
+            print(component_loss.item(), component_output.shape)
+
+
         except RuntimeError:
             print(f'input_mixture:{mixture.shape},\n'
-                  f' class_output:{class_output.shape},\n'
-                  f' class_label:{class_label.shape},\n'
+                  # f' class_output:{class_output.shape},\n'
+                  f' class_label:{component_label.shape},\n'
                   f' component_output:{component_output.shape},\n'
                   f'component_label:{component_label.shape}')
             raise Exception
 
         pickle_file = open(pickle_file_path, 'wb')
         pickle.dump({'component_output': component_output,
-                     'class_output': class_output,
+                     'class_output': None,
                      'mixture': mixture,
                      'component_label': component_label,
-                     'class_label': class_label,
-                     'classify_loss': classify_loss,
+                     'class_label': component_label,
+                     'classify_loss': None,
                      'component_loss': component_loss}, pickle_file)
         pickle_file.close()
+        break
 
-    print(f'classify_loss:{classify_loss}, \n'
+    print(f'classify_loss:{None}, \n'
           f'component_loss:{component_loss}, \n'
-          f'total_loss:{total_loss}')
+          f'total_loss:{None}, \n'
+          f'pickle_file_path:{pickle_file_path}')
 
 
 def get_args():
@@ -94,7 +107,7 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-    net = InitNet(n_classes=1)
+    net = UNet(n_channels=1, n_classes=1)
 
     logging.info("Loading model {}".format(args.model))
 
