@@ -88,7 +88,7 @@ def train_net(net,
         Images scaling:  {img_scale}
     ''')
 
-    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-5)
+    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-7)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
     if net.n_classes > 1:
         criterion = nn.CrossEntropyLoss()
