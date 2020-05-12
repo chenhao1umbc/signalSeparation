@@ -36,7 +36,7 @@ def train_net(net,
               epochs=5,
               batch_size=10,
               lr=0.01,
-              val_percent=0.1,
+              val_percent=0.001,
               save_cp=True,
               img_scale=0.5,
               dir_mixture=dir_mixture,
@@ -163,6 +163,11 @@ def train_net(net,
             score_file_val.close()
             print(f'Training Score file saved! Location:{loss_storage_file_path}\n'
                   f'Validation Score file saved! Location:{loss_storage_file_path_val}')
+
+            if len(all_scores_val) > 3 and all_scores_val[-1] > all_scores_val[-2] > all_scores_val[-3]:
+                logging.info(f'Validation threshold reached! Current val loss:{all_scores_val[-1]}, '
+                             f'current batch num:{len(all_scores_val)}')
+                break
 
         if save_cp:
             try:
