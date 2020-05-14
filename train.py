@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, random_split, RandomSampler
 
 dir_img = 'data/imgs/'
 dir_mask = 'data/masks/'
-dir_checkpoint = 'checkpoints_1/'
+dir_checkpoint = 'checkpoints_2/'
 dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
                   'datasets/dataset_0426_14000_128x20/component/Zigbee.mat.pickle',
@@ -91,7 +91,7 @@ def train_net(net,
         Images scaling:  {img_scale}
     ''')
 
-    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-6)
+    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
     if net.n_classes > 1:
         criterion = nn.CrossEntropyLoss()
@@ -108,7 +108,7 @@ def train_net(net,
                 batch_index += 1
 
                 imgs = batch['mixture'].unsqueeze(1)
-                true_masks = batch['source_labels'][:, 1, :, :].unsqueeze(1)
+                true_masks = batch['source_labels'][:, 2, :, :].unsqueeze(1)
 
                 assert imgs.shape[1] == net.n_channels, \
                     f'Network has been defined with {net.n_channels} input channels, ' \
@@ -149,6 +149,7 @@ def train_net(net,
 
             val_score = eval_net(net, val_loader, device)
             scheduler.step(val_score)
+            print('batch_num:', batch_num)
             all_scores_train.append(epoch_loss/batch_num)
             all_scores_val.append(val_score)
 
