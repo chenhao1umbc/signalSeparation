@@ -124,13 +124,12 @@ def train_net(net,
                 loss = criterion(masks_pred, true_masks)
                 epoch_loss += loss.item()
 
-                '''
-                if batch_index == 500:
+                if batch_index == 5:
                     pickle_file = open(training_set_visualization_file_path, 'wb')
                     pickle.dump({'component_output': masks_pred,
                                  'class_output': None,
                                  'mixture': imgs,
-                                 'component_label': true_masks,
+                                 'component_label': batch['source_labels'],
                                  'class_label': None,
                                  'classify_loss': None,
                                  'component_loss': loss.item()}, pickle_file)
@@ -138,7 +137,6 @@ def train_net(net,
                     print(f'training visualization file stored! File path:{training_set_visualization_file_path}')
 
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
-                '''
 
                 optimizer.zero_grad()
                 loss.backward()
