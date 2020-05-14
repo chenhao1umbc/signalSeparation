@@ -122,7 +122,7 @@ def train_net(net,
                 masks_pred = net(imgs)
 
                 loss = criterion(masks_pred, true_masks)
-                epoch_loss += loss.item()
+                epoch_loss += loss.item()/batch_size
 
                 '''
                 if batch_index == 500:
