@@ -22,7 +22,7 @@ dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
 val_percent = 0.1
 gamma = 0.5
 
-train_set_file_path = 'train_set_visualization_fcn.pickle'
+train_set_file_path = 'train_set_visualization.pickle'
 val_set_root_path = 'val_output_pickle_file_fcn'
 
 
