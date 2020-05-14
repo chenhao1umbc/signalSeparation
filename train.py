@@ -30,6 +30,9 @@ loss_storage_file_path = 'scoreFile.pickle'
 loss_storage_file_path_val = 'scoreFileVal.pickle'
 
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 
 def train_net(net,
               device,
@@ -105,7 +108,7 @@ def train_net(net,
                 batch_index += 1
 
                 imgs = batch['mixture'].unsqueeze(1)
-                true_masks = batch['source_labels'][:, 0, :, :].unsqueeze(1)
+                true_masks = batch['source_labels'][:, 1, :, :].unsqueeze(1)
 
                 assert imgs.shape[1] == net.n_channels, \
                     f'Network has been defined with {net.n_channels} input channels, ' \
