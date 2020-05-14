@@ -102,7 +102,7 @@ def train_net(net,
     for epoch in range(epochs):
         net.train()
         epoch_loss = 0
-        batch_num = 2000/batch_size
+        batch_num = 2000/100
         with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{epochs}', unit='samples') as pbar:
             for batch in train_loader:
                 batch_index += 1
@@ -122,7 +122,7 @@ def train_net(net,
                 masks_pred = net(imgs)
 
                 loss = criterion(masks_pred, true_masks)
-                epoch_loss += loss.item()/batch_size
+                epoch_loss += loss.item()
 
                 '''
                 if batch_index == 500:
