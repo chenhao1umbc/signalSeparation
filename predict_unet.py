@@ -46,7 +46,7 @@ def predict_img(net,
         train_set_file = open(train_set_file_path, 'rb')
         train_set_info = pickle.load(train_set_file)
         mixture = train_set_info['mixture'].unsqueeze(1)
-        component_label = train_set_info['component_label']
+        component_label = train_set_info['component_label'][:, 1, :, :].unsqueeze(1)
         print(component_label.shape)
 
         #mixture = batch['mixture'].unsqueeze(1)
