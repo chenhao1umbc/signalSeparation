@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, random_split, RandomSampler
 
 dir_img = 'data/imgs/'
 dir_mask = 'data/masks/'
-dir_checkpoint = 'checkpoints/'
+dir_checkpoint = 'checkpoints_1/'
 dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
                   'datasets/dataset_0426_14000_128x20/component/Zigbee.mat.pickle',
