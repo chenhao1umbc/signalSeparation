@@ -22,6 +22,9 @@ dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
 val_percent = 0.1
 gamma = 0.5
 
+train_set_file_path = 'train_set_visualization.pickle'
+val_set_root_path = 'val_output_pickle_file_fcn'
+
 
 def predict_img(net,
                 device):
@@ -40,13 +43,17 @@ def predict_img(net,
     criterion_component = nn.MSELoss()
 
     for batch in val_loader:
-        mixture = batch['mixture']
-        class_label = batch['class_label']
-        component_label = batch['source_labels'][:, 0:1, :, :]
+
+        train_set_file = open(train_set_file_path, 'rb')
+        train_set_info = pickle.load(train_set_file)
+        mixture = train_set_info['mixture']
+        print(train_set_info['component_label'].shape)
+        component_label = train_set_info['component_label'][:, 1, :, :].unsqueeze(1)
+        print('component label shape:', component_label.shape)
 
         mixture = mixture.to(device=device, dtype=torch.float32)
         component_label = component_label.to(device=device, dtype=torch.float32)
-        class_label = class_label.to(device=device, dtype=torch.float32)
+        #class_label = class_label.to(device=device, dtype=torch.float32)
 
         component_output, class_output = net(mixture)
 
@@ -58,7 +65,7 @@ def predict_img(net,
         except RuntimeError:
             print(f'input_mixture:{mixture.shape},\n'
                   f' class_output:{class_output.shape},\n'
-                  f' class_label:{class_label.shape},\n'
+                  f' class_label:{None},\n'
                   f' component_output:{component_output.shape},\n'
                   f'component_label:{component_label.shape}')
             raise Exception
@@ -72,6 +79,7 @@ def predict_img(net,
                      'classify_loss': classify_loss,
                      'component_loss': component_loss}, pickle_file)
         pickle_file.close()
+        break
 
     print(f'classify_loss:{classify_loss}, \n'
           f'component_loss:{component_loss}, \n'
