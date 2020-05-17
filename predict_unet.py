@@ -46,19 +46,15 @@ def predict_img(net,
         train_set_file = open(train_set_file_path, 'rb')
         train_set_info = pickle.load(train_set_file)
         mixture = train_set_info['mixture']
-        component_label = train_set_info['component_label'][:, 3, :, :].unsqueeze(1)
+        component_label = train_set_info['component_label'][:, 1, :, :].unsqueeze(1)
         print('component label shape:', component_label.shape)
 
-        #mixture = batch['mixture'].unsqueeze(1)
-        #component_label = batch['source_labels'][:, 0, :, :].unsqueeze(1)
 
         mixture = mixture.to(device=device, dtype=torch.float32)
         component_label = component_label.to(device=device, dtype=torch.float32)
 
         print(mixture.shape)
         component_output = net(mixture)
-        # Added for label fitting
-        #component_label_test = component_label[:, 0:1, :, :]
 
         try:
             # classify_loss = criterion_class(class_output, class_label)
