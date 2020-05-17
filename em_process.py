@@ -6,7 +6,6 @@ import argparse
 import torch
 import glob
 import pickle
-from predict_unet import predict_img
 from unet import UNet
 
 pickle_file_path = 'EM_output_iter_'
