@@ -15,7 +15,7 @@ def eval_net(net, loader, device):
     with tqdm(total=n_val, desc='Validation round', unit='batch', leave=False) as pbar:
         for batch in loader:
             imgs = batch['mixture'].unsqueeze(1)
-            true_masks = batch['source_labels'][:, 3, :, :].unsqueeze(1)
+            true_masks = batch['source_labels'][:, 1, :, :].unsqueeze(1)
             imgs = imgs.to(device=device, dtype=torch.float32)
             true_masks = true_masks.to(device=device, dtype=mask_type)
 

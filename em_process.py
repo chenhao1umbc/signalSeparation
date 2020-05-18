@@ -83,7 +83,7 @@ class EMCapsule:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         psd_mixture = psd_mixture.to(device=device, dtype=torch.float32)
         output = net(psd_mixture)
-        return output.detach().numpy()
+        return output.cpu().detach().numpy()
 
     def process(self, iteration, psd_mixture, component_label):
         psd_sources = torch.zeros([batch_size, nb_sources, sample_length, freq_bin])
@@ -113,7 +113,7 @@ class EMCapsule:
             flatten_mixture = np.zeros((sample_length * batch_size, freq_bin, nb_channels))
             for batch_index in range(batch_size):
                 flatten_mixture[batch_index * sample_length:(batch_index + 1) * sample_length, :, 0] = \
-                    psd_mixture.detach().numpy()[batch_index, 0, :]
+                    psd_mixture.cpu().detach().numpy()[batch_index, 0, :]
 
             # db to absolute
             flatten_mixture = np.exp(flatten_mixture)
@@ -133,8 +133,8 @@ class EMCapsule:
                         torch.Tensor(np.log(flatten_sources[batch_index * sample_length:(batch_index + 1) * sample_length, :, source_index]))
 
             # Score Evaluation after each iter
-            criterion_component = nn.MSELoss()
-            component_loss = criterion_component(psd_sources, component_label)
+            criterion_component = nn.MSELoss().cuda()
+            component_loss = criterion_component(psd_sources.cuda(), component_label.cuda())
             all_scores.append(component_loss.item())
             print(f'MSE loss for current iter:{component_loss.item()}')
 
