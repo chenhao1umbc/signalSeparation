@@ -52,6 +52,7 @@ class EMCapsule:
         self.classify_model_paths = classify_model_paths
         self.labels = []
         self.init_nets = dict()
+        self.refine_nets = dict()
         self.classify_nets = dict()
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -66,6 +67,7 @@ class EMCapsule:
             init_net.to(device=self.device)
             init_net.load_state_dict(torch.load(model_path, map_location=self.device))
             self.init_nets[label] = init_net
+            self.refine_nets[label] = init_net
 
         # todo: refining networks
         '''for i in range(len(refine_model_paths)):
@@ -102,7 +104,8 @@ class EMCapsule:
                 if it == 0:
                     psd_source = self.psd_model(self.init_nets[label], psd_mixture)
                 else:
-                    psd_source = psd_sources[:, source_index:source_index+1, :, :].cpu().detach().numpy()
+                    psd_source = self.psd_model(self.refine_nets[label],
+                                                psd_sources[:, source_index:source_index+1, :, :])
 
                 for batch_index in range(batch_size):
                     flatten_sources[batch_index * sample_length:(batch_index + 1) * sample_length, :, 0, source_index] = \
