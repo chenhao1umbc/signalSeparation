@@ -80,7 +80,7 @@ def get_args():
                         metavar='FILE',
                         help="Specify the file in which the model is stored")
 
-    parser.add_argument('--source', '-s', type=float,
+    parser.add_argument('--source', '-s', type=int,
                         help="Source index",
                         default=0)
 
