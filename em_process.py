@@ -23,7 +23,6 @@ nb_channels = 1
 nb_sources = 4
 
 
-
 def get_args():
     parser = argparse.ArgumentParser(description='Arguments parser for EM process',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -53,7 +52,6 @@ class EMCapsule:
         self.labels = []
         self.init_nets = dict()
         self.refine_nets = dict()
-        self.classify_nets = dict()
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         logging.info(f'Using device {self.device}')
@@ -67,16 +65,12 @@ class EMCapsule:
             init_net.to(device=self.device)
             init_net.load_state_dict(torch.load(model_path, map_location=self.device))
             self.init_nets[label] = init_net
+
+        for refine_model_path in refine_model_paths:
+            refine_net = UNet(n_channels=1, n_classes=1)
+            refine_net.to(device=self.device)
+            refine_net.load_state_dict(torch.load(refine_model_path, map_location=self.device))
             self.refine_nets[label] = init_net
-
-        # todo: refining networks
-        '''for i in range(len(refine_model_paths)):
-            init_net = UNet(n_channels=1, n_classes=1)
-            init_net.to(device=device)
-            init_net.load_state_dict(torch.load(args.model, map_location=device))
-            refine_model = refine_model_paths[i]'''
-
-        # todo: classify networks
 
         logging.info("Model loaded !")
 
@@ -104,8 +98,6 @@ class EMCapsule:
             for label in self.init_nets:
                 if it == 0:
                     psd_source = self.psd_model(self.init_nets[label], psd_mixture)
-                    #init_loss = criterion_component(torch.Tensor(psd_source[:, :, :]).cuda(),
-                    #                                  component_label[:, 0:1, :, :].cuda())
                 else:
                     psd_source = self.psd_model(self.refine_nets[label],
                                                 psd_sources[:, source_index:source_index+1, :, :])
@@ -178,13 +170,15 @@ if __name__ == "__main__":
 
     args = get_args()
 
-    #init_model_paths = glob.glob(args.init_model + '*.pth')
+    # init_model_paths = glob.glob(args.init_model + '*.pth')
     init_model_paths = ['init_models/blt.pth', 'init_models/ZigbeeOQPSK.pth',
                         'init_models/ZigbeeASK.pth', 'init_models/ZigbeeBPSK.pth']
-    refine_model_paths = glob.glob(args.refine_models + '*.pth')
+    # refine_model_paths = glob.glob(args.refine_models + '*.pth')
+    refine_model_paths = ['init_models/blt.pth', 'init_models/ZigbeeOQPSK.pth',
+                          'init_models/ZigbeeASK.pth', 'init_models/ZigbeeBPSK.pth']
     class_model_paths = glob.glob(args.class_model + '*.pth')
 
-    #print(init_model_paths)
+    # print(init_model_paths)
 
     em_capsule = EMCapsule(init_model_paths=init_model_paths,
                            refine_model_paths=refine_model_paths,
