@@ -9,7 +9,7 @@ from torch import optim
 from tqdm import tqdm
 
 from eval import eval_net
-from unet import UNet
+from unet import UNetWithClass
 
 from utils.dataset import PsdDatasetWithClass
 from torch.utils.data import DataLoader, random_split, RandomSampler
@@ -28,6 +28,8 @@ dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
 training_set_visualization_file_path = 'train_set_visualization.pickle'
 loss_storage_file_path = 'scoreFile.pickle'
 loss_storage_file_path_val = 'scoreFileVal.pickle'
+gamma = 0.1
+source_index = 3
 
 
 def count_parameters(model):
@@ -78,8 +80,6 @@ def train_net(net,
         train_sample_file.close()
         val_sample_file.close()
 
-    #writer = SummaryWriter(comment=f'LR_{lr}_BS_{batch_size}_SCALE_{img_scale}')
-
     logging.info(f'''Starting training:
         Epochs:          {epochs}
         Batch size:      {batch_size}
@@ -93,6 +93,7 @@ def train_net(net,
 
     optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=1e-5)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min' if net.n_classes > 1 else 'max', patience=2)
+    class_criterion = nn.BCELoss()
     if net.n_classes > 1:
         criterion = nn.CrossEntropyLoss()
     else:
@@ -108,7 +109,8 @@ def train_net(net,
                 batch_index += 1
 
                 imgs = batch['mixture'].unsqueeze(1)
-                true_masks = batch['source_labels'][:, 1, :, :].unsqueeze(1)
+                true_masks = batch['source_labels'][:, source_index, :, :].unsqueeze(1)
+                true_class = batch['class_label'][:, source_index:source_index+1]
 
                 assert imgs.shape[1] == net.n_channels, \
                     f'Network has been defined with {net.n_channels} input channels, ' \
@@ -118,19 +120,25 @@ def train_net(net,
                 imgs = imgs.to(device=device, dtype=torch.float32)
                 mask_type = torch.float32 if net.n_classes == 1 else torch.long
                 true_masks = true_masks.to(device=device, dtype=mask_type)
+                true_class = true_class.to(device=device, dtype=torch.float32)
                 
-                masks_pred = net(imgs)
+                masks_pred, class_output = net(imgs)
 
+                # todo: adding classifier
                 loss = criterion(masks_pred, true_masks)
-                epoch_loss += loss.item()
+                print("the shapes for classes", class_output.shape, true_class.shape)
+                class_loss = class_criterion(class_output, true_class)
+                total_loss = (1-gamma)*loss + gamma*class_loss
 
-                if batch_index == 5:
+                epoch_loss += total_loss.item()
+
+                if batch_index == 1:
                     pickle_file = open(training_set_visualization_file_path, 'wb')
                     pickle.dump({'component_output': masks_pred,
-                                 'class_output': None,
+                                 'class_output': class_output,
                                  'mixture': imgs,
                                  'component_label': batch['source_labels'],
-                                 'class_label': None,
+                                 'class_label': batch['class_label'],
                                  'classify_loss': None,
                                  'component_loss': loss.item()}, pickle_file)
                     pickle_file.close()
@@ -139,12 +147,13 @@ def train_net(net,
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
                 optimizer.zero_grad()
-                loss.backward()
+                total_loss.backward()
                 nn.utils.clip_grad_value_(net.parameters(), 0.1)
                 optimizer.step()
 
                 pbar.update(imgs.shape[0])
 
+            # todo: fix eval function for classifier
             val_score = eval_net(net, val_loader, device)
             scheduler.step(val_score)
             print('batch_num:', batch_num)
@@ -215,7 +224,7 @@ if __name__ == '__main__':
     #   - For N > 2 classes, use n_classes=N
     
     #Changed channel number to 1 for STFT images
-    net = UNet(n_channels=1, n_classes=1, bilinear=True)
+    net = UNetWithClass(n_channels=1, n_classes=1, bilinear=True)
     logging.info(f'Network:\n'
                  f'\t{net.n_channels} input channels\n'
                  f'\t{net.n_classes} output channels (classes)\n'
