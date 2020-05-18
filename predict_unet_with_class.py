@@ -14,7 +14,7 @@ from unet import UNetWithClass
 pickle_file_path = './val_output_pickle_file'
 val_percent = 0.1
 gamma = 0.1
-source_index = 1
+source_index = 3
 
 train_set_file_path = 'train_set_visualization.pickle'
 
