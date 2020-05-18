@@ -102,8 +102,7 @@ class EMCapsule:
                 if it == 0:
                     psd_source = self.psd_model(self.init_nets[label], psd_mixture)
                 else:
-                    psd_source = self.psd_model(self.init_nets[label],
-                                                psd_sources[:, source_index:source_index+1, :, :])
+                    psd_source = psd_sources[:, source_index:source_index+1, :, :]
 
                 for batch_index in range(batch_size):
                     flatten_sources[batch_index * sample_length:(batch_index + 1) * sample_length, :, 0, source_index] = \
