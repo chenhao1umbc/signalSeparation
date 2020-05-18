@@ -144,6 +144,7 @@ class EMCapsule:
             for source_index in range(nb_sources):
                 source_loss = criterion_component(psd_sources[:, source_index, :, :].cuda(),
                                                   component_label[:, source_index, :, :].cuda())
+                print(psd_sources[:, source_index, :, :].cuda(), component_label[:, source_index, :, :].cuda())
                 print(f'MSE loss for current iter, source {source_index}:{source_loss.item()}')
                 all_scores[source_index].append(source_loss.item())
 
