@@ -104,9 +104,8 @@ class EMCapsule:
             for label in self.init_nets:
                 if it == 0:
                     psd_source = self.psd_model(self.init_nets[label], psd_mixture)
-                    init_loss = criterion_component(torch.Tensor(psd_source[:, :, :]).cuda(),
-                                                      component_label[:, 0:1, :, :].cuda())
-                    print(f"initial loss:{init_loss}", torch.Tensor(psd_source[:, :, :]).cuda(), component_label[:, 0:1, :, :].cuda())
+                    #init_loss = criterion_component(torch.Tensor(psd_source[:, :, :]).cuda(),
+                    #                                  component_label[:, 0:1, :, :].cuda())
                 else:
                     psd_source = self.psd_model(self.refine_nets[label],
                                                 psd_sources[:, source_index:source_index+1, :, :])
@@ -185,8 +184,7 @@ if __name__ == "__main__":
     refine_model_paths = glob.glob(args.refine_models + '*.pth')
     class_model_paths = glob.glob(args.class_model + '*.pth')
 
-    print(init_model_paths)
-
+    #print(init_model_paths)
 
     em_capsule = EMCapsule(init_model_paths=init_model_paths,
                            refine_model_paths=refine_model_paths,
