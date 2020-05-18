@@ -104,7 +104,7 @@ class EMCapsule:
             for label in self.init_nets:
                 if it == 0:
                     psd_source = self.psd_model(self.init_nets[label], psd_mixture)
-                    init_loss = criterion_component(psd_source[:, :, :].cuda(),
+                    init_loss = criterion_component(torch.Tensor(psd_source[:, :, :]).cuda(),
                                                       component_label[:, 0:1, :, :].cuda())
                     print(f"initial loss:{init_loss}")
                 else:
