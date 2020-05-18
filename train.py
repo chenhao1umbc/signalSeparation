@@ -153,8 +153,7 @@ def train_net(net,
 
                 pbar.update(imgs.shape[0])
 
-            # todo: fix eval function for classifier
-            val_score = eval_net(net, val_loader, device)
+            val_score = eval_net(net, val_loader, device, source_index=source_index)
             scheduler.step(val_score)
             print('batch_num:', batch_num)
             all_scores_train.append(epoch_loss/batch_num)

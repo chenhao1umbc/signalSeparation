@@ -4,11 +4,10 @@ from tqdm import tqdm
 
 from dice_loss import dice_coeff
 
-source_index = 3
 gamma = 0.1
 
 
-def eval_net(net, loader, device):
+def eval_net(net, loader, device, source_index):
     net.eval()
     mask_type = torch.float32 if net.n_classes == 1 else torch.long
     n_val = len(loader)  # the number of batch

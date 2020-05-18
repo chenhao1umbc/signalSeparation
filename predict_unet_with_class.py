@@ -14,14 +14,14 @@ from unet import UNetWithClass
 pickle_file_path = './val_output_pickle_file'
 val_percent = 0.1
 gamma = 0.1
-source_index = 3
 
 train_set_file_path = 'train_set_visualization.pickle'
 
 
 def predict_img(net,
                 device,
-                input_pickle_file_path):
+                input_pickle_file_path,
+                source_index):
     net.eval()
     criterion_component = nn.MSELoss()
     criterion_class = nn.BCELoss()
@@ -80,9 +80,9 @@ def get_args():
                         metavar='FILE',
                         help="Specify the file in which the model is stored")
 
-    parser.add_argument('--scale', '-s', type=float,
-                        help="Scale factor for the input images",
-                        default=0.5)
+    parser.add_argument('--source', '-s', type=float,
+                        help="Source index",
+                        default=0)
 
     return parser.parse_args()
 
@@ -92,6 +92,9 @@ if __name__ == "__main__":
     net = UNetWithClass(n_channels=1, n_classes=1)
 
     logging.info("Loading model {}".format(args.model))
+    logging.info("Source index {}".format(args.source))
+
+    source_index = args.source
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Using device {device}')
@@ -102,5 +105,6 @@ if __name__ == "__main__":
 
     mask = predict_img(net=net,
                        device=device,
-                       input_pickle_file_path=train_set_file_path)
+                       input_pickle_file_path=train_set_file_path,
+                       source_index=source_index)
 
