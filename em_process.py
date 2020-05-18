@@ -88,7 +88,9 @@ class EMCapsule:
     def process(self, iteration, psd_mixture, component_label):
         psd_sources = torch.zeros([batch_size, nb_sources, sample_length, freq_bin])
         psd_sources = psd_sources.to(device=self.device, dtype=torch.float32)
-        all_scores = []
+        all_scores = dict()
+        for source_index in range(nb_sources):
+            all_scores[source_index] = []
 
         for it in range(int(iteration)):
             print(f"EM iteration {it}/{iteration}")
@@ -134,9 +136,11 @@ class EMCapsule:
 
             # Score Evaluation after each iter
             criterion_component = nn.MSELoss().cuda()
-            component_loss = criterion_component(psd_sources.cuda(), component_label.cuda())
-            all_scores.append(component_loss.item())
-            print(f'MSE loss for current iter:{component_loss.item()}')
+            for source_index in range(nb_sources):
+                source_loss = criterion_component(psd_sources[:, source_index:source_index+1, :, :].cuda(),
+                                                  component_label[:, source_index:source_index+1, :, :].cuda())
+                print(f'MSE loss for current iter, source {source_index}:{source_loss.item()}')
+                all_scores[source_index].append(source_loss.item()/20)
 
             # Store all outputs into pickle file
             pickle_file = open(pickle_file_path + str(it), 'wb')
