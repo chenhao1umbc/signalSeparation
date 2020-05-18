@@ -174,6 +174,8 @@ if __name__ == "__main__":
     refine_model_paths = glob.glob(args.refine_models + '*.pth')
     class_model_paths = glob.glob(args.class_model + '*.pth')
 
+    print(init_model_paths)
+
 
     em_capsule = EMCapsule(init_model_paths=init_model_paths,
                            refine_model_paths=refine_model_paths,
