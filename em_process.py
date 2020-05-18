@@ -90,6 +90,7 @@ class EMCapsule:
     def process(self, iteration, psd_mixture, component_label):
         psd_sources = torch.zeros([batch_size, nb_sources, sample_length, freq_bin])
         psd_sources = psd_sources.to(device=self.device, dtype=torch.float32)
+        criterion_component = nn.MSELoss().cuda()
         all_scores = dict()
         for source_index in range(nb_sources):
             all_scores[source_index] = []
@@ -103,6 +104,9 @@ class EMCapsule:
             for label in self.init_nets:
                 if it == 0:
                     psd_source = self.psd_model(self.init_nets[label], psd_mixture)
+                    init_loss = criterion_component(psd_source[:, :, :].cuda(),
+                                                      component_label[:, 0:1, :, :].cuda())
+                    print(f"initial loss:{init_loss}")
                 else:
                     psd_source = self.psd_model(self.refine_nets[label],
                                                 psd_sources[:, source_index:source_index+1, :, :])
@@ -137,7 +141,6 @@ class EMCapsule:
                         torch.Tensor(np.log(flatten_sources[batch_index * sample_length:(batch_index + 1) * sample_length, :, source_index]))
 
             # Score Evaluation after each iter
-            criterion_component = nn.MSELoss().cuda()
             for source_index in range(nb_sources):
                 source_loss = criterion_component(psd_sources[:, source_index:source_index+1, :, :].cuda(),
                                                   component_label[:, source_index:source_index+1, :, :].cuda())
