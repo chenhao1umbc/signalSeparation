@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, random_split, RandomSampler
 
 dir_img = 'data/imgs/'
 dir_mask = 'data/masks/'
-dir_checkpoint = 'checkpoints_1/'
+dir_checkpoint = 'checkpoints_with_class_3/'
 dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
                   'datasets/dataset_0426_14000_128x20/component/Zigbee.mat.pickle',
@@ -126,7 +126,7 @@ def train_net(net,
 
                 # todo: adding classifier
                 loss = criterion(masks_pred, true_masks)
-                print("the shapes for classes", class_output.shape, true_class.shape)
+                #print("the shapes for classes", class_output.shape, true_class.shape)
                 class_loss = class_criterion(class_output, true_class)
                 total_loss = (1-gamma)*loss + gamma*class_loss
 
