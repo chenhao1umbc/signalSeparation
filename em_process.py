@@ -140,7 +140,7 @@ class EMCapsule:
                 source_loss = criterion_component(psd_sources[:, source_index:source_index+1, :, :].cuda(),
                                                   component_label[:, source_index:source_index+1, :, :].cuda())
                 print(f'MSE loss for current iter, source {source_index}:{source_loss.item()}')
-                all_scores[source_index].append(source_loss.item()/20)
+                all_scores[source_index].append(source_loss.item())
 
             # Store all outputs into pickle file
             pickle_file = open(pickle_file_path + str(it), 'wb')
