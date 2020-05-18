@@ -170,7 +170,9 @@ if __name__ == "__main__":
 
     args = get_args()
 
-    init_model_paths = glob.glob(args.init_model + '*.pth')
+    #init_model_paths = glob.glob(args.init_model + '*.pth')
+    init_model_paths = ['init_models/blt.pth', 'init_models/ZigbeeOQPSK.pth',
+                        'init_models/ZigbeeASK.pth', 'init_models/ZigbeeBPSK.pth']
     refine_model_paths = glob.glob(args.refine_models + '*.pth')
     class_model_paths = glob.glob(args.class_model + '*.pth')
 
