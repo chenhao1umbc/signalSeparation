@@ -6,10 +6,22 @@ import argparse
 import torch
 import glob
 import pickle
+import torch.nn as nn
 from unet import UNet
 
-pickle_file_path = 'EM_output_iter_'
-train_set_file_path = 'train_set_visualization.pickle'
+
+pickle_file_path = './EM_outputs/EM_output_iter_'
+train_set_file_path = './train_set_visualization.pickle'
+EM_loss_file_path = './EM_scoreFile.pickle'
+
+# todo: replace static numbers
+sample_length = 20
+batch_size = 100
+freq_bin = 128
+# todo: multiple channels
+nb_channels = 1
+nb_sources = 4
+
 
 
 def get_args():
@@ -24,7 +36,7 @@ def get_args():
     parser.add_argument('--class_model', '-cm', default='CLASS_MODEL.pth',
                         metavar='FILE',
                         help="Specify the file in which the classify model is stored")
-    parser.add_argument('--iterations', '-iter', default='2',
+    parser.add_argument('--iterations', '-iter', default='1',
                         metavar='FILE',
                         help="Specify the number of EM iterations")
 
@@ -73,36 +85,78 @@ class EMCapsule:
         output = net(psd_mixture)
         return output.detach().numpy()
 
-    @classmethod
-    def process(cls, iteration, psd_mixture, component_label):
+    def process(self, iteration, psd_mixture, component_label):
+        psd_sources = torch.zeros([batch_size, nb_sources, sample_length, freq_bin])
+        psd_sources = psd_sources.to(device=self.device, dtype=torch.float32)
+        all_scores = []
 
-        for it in range(iteration):
-            logging.info(f"EM iteration {it}/{iteration}")
+        for it in range(int(iteration)):
+            print(f"EM iteration {it}/{iteration}")
             source_index = 0
-            component_label.detach().numpy().shape
-            psd_sources = np.array(component_label.detach().numpy().shape)
+            flatten_sources = np.zeros((sample_length*batch_size, freq_bin, nb_channels, nb_sources))
 
             # Psd modeling
-            for label in cls.init_nets:
-                psd_source = cls.psd_model(cls.init_nets[label], psd_mixture)
-                psd_sources[:, :, :, source_index] = psd_source
+            for label in self.init_nets:
+                if it == 0:
+                    psd_source = self.psd_model(self.init_nets[label], psd_mixture)
+                else:
+                    psd_source = self.psd_model(self.init_nets[label],
+                                                psd_sources[:, source_index:source_index+1, :, :])
+
+                for batch_index in range(batch_size):
+                    flatten_sources[batch_index * sample_length:(batch_index + 1) * sample_length, :, 0, source_index] = \
+                        psd_source[batch_index, 0, :, :]
+
                 source_index += 1
 
-            # Applying Wiener filter
-            stft_mixture = np.sqrt(psd_mixture)
-            stft_sources = norbert.wiener(psd_sources, stft_mixture)
+            # torch to numpy and flatten
+            flatten_mixture = np.zeros((sample_length * batch_size, freq_bin, nb_channels))
+            for batch_index in range(batch_size):
+                flatten_mixture[batch_index * sample_length:(batch_index + 1) * sample_length, :, 0] = \
+                    psd_mixture.detach().numpy()[batch_index, 0, :]
 
-            # Extracting covariance matrix and psd
-            for source_index in stft_sources.shape[:3]:
-                psd_source, cov_matrix = norbert.get_local_gaussian_model(stft_sources[:, :, :, source_index])
-                psd_sources[:, :, :, source_index] = psd_source
+            # db to absolute
+            flatten_mixture = np.exp(flatten_mixture)
+            flatten_sources = np.exp(flatten_sources)
 
+            # PSD to stft
+            stft_mixture = np.sqrt(flatten_mixture)
+            stft_sources = np.sqrt(flatten_sources)
+
+            # Wiener filtering
+            stft_sources, flatten_sources, cov_matrix = norbert.expectation_maximization(stft_sources, stft_mixture)
+
+            # Reflect back to torch
+            for source_index in range(nb_sources):
+                for batch_index in range(batch_size):
+                    psd_sources[batch_index, source_index, :, :] = \
+                        torch.Tensor(np.log(flatten_sources[batch_index * sample_length:(batch_index + 1) * sample_length, :, source_index]))
+
+            # Score Evaluation after each iter
+            criterion_component = nn.MSELoss()
+            component_loss = criterion_component(psd_sources, component_label)
+            all_scores.append(component_loss.item())
+            print(f'MSE loss for current iter:{component_loss.item()}')
+
+            # Store all outputs into pickle file
             pickle_file = open(pickle_file_path + str(it), 'wb')
             pickle.dump({'component_output': psd_sources,
-                         'component_label:': component_label,
+                         'component_label': component_label,
                          'mixture': psd_mixture,
+                         'class_label': None,
+                         'class_output': None,
                          'classify_loss': None}, pickle_file)
             pickle_file.close()
+
+            # Store all losses into pickle file
+            loss_file = open(EM_loss_file_path, 'wb')
+            pickle.dump(all_scores, loss_file)
+            loss_file.close()
+
+            print(f'component_output:{psd_sources.shape}, \n'
+                  f'component_label:{component_label.dtype}, \n'
+                  f'mixture:{psd_mixture.shape}\n'
+                  f'store path:{pickle_file_path + str(it)}')
 
         return None
 
@@ -119,6 +173,7 @@ if __name__ == "__main__":
     init_model_paths = glob.glob(args.init_model + '*.pth')
     refine_model_paths = glob.glob(args.refine_models + '*.pth')
     class_model_paths = glob.glob(args.class_model + '*.pth')
+
 
     em_capsule = EMCapsule(init_model_paths=init_model_paths,
                            refine_model_paths=refine_model_paths,
