@@ -131,19 +131,18 @@ def train_net(net,
                 total_loss = (1-gamma)*loss + gamma*class_loss
 
                 epoch_loss += total_loss.item()
+
                 if batch_index == 1:
-                    for val_batch in val_loader:
-                        pickle_file = open(training_set_visualization_file_path, 'wb')
-                        pickle.dump({'component_output': masks_pred,
-                                     'class_output': class_output,
-                                     'mixture': imgs,
-                                     'component_label': val_batch['source_labels'],
-                                     'class_label': val_batch['class_label'],
-                                     'classify_loss': None,
-                                     'component_loss': loss.item()}, pickle_file)
-                        pickle_file.close()
-                        print(f'val_batch visualization file stored! File path:{training_set_visualization_file_path}')
-                        break
+                    pickle_file = open(training_set_visualization_file_path, 'wb')
+                    pickle.dump({'component_output': masks_pred,
+                                 'class_output': class_output,
+                                 'mixture': imgs,
+                                 'component_label': batch['source_labels'],
+                                 'class_label': batch['class_label'],
+                                 'classify_loss': None,
+                                 'component_loss': loss.item()}, pickle_file)
+                    pickle_file.close()
+                    print(f'training visualization file stored! File path:{training_set_visualization_file_path}')
 
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
