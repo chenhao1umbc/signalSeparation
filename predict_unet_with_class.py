@@ -24,7 +24,7 @@ def symbol_accuracy(class_label, class_output, batch_size):
     for item_index in range(batch_size):
         output = int((1 - threshold) + class_output[item_index, 0].cpu().detach().numpy())
         label = int((1 - threshold) + class_label[item_index, 0].cpu().detach().numpy())
-        print(output, label)
+        #print(output, label)
         if output == label:
             TP += 1
     return TP / batch_size
@@ -61,7 +61,9 @@ def predict_img(net,
               f'component_label:{component_label.shape}')
         raise Exception
 
-    class_accuracy = symbol_accuracy(class_label, class_output, class_label.shape[0])
+    class_accuracy = symbol_accuracy(class_label=class_label,
+                                     class_output=class_output,
+                                     batch_size=class_label.shape[0])
     pickle_file = open(pickle_file_path, 'wb')
     pickle.dump({'component_output': component_output,
                  'class_output': class_output,
