@@ -14,8 +14,19 @@ from unet import UNetWithClass
 pickle_file_path = './val_output_pickle_file'
 val_percent = 0.1
 gamma = 0.1
+threshold = 0.5
 
 train_set_file_path = 'train_set_visualization.pickle'
+
+
+def symbol_accuracy(class_label, class_output, batch_size):
+    TP = 0
+    for item_index in range(batch_size):
+        output = int((1 - threshold) + class_output[item_index, 0].cpu().detach().numpy())
+        label = int((1 - threshold) + class_label[item_index, 0].cpu().detach().numpy())
+        if output == label:
+            TP += 1
+    return TP / batch_size
 
 
 def predict_img(net,
@@ -31,7 +42,6 @@ def predict_img(net,
     mixture = train_set_info['mixture']
     component_label = train_set_info['component_label'][:, source_index, :, :].unsqueeze(1)
     class_label = train_set_info['class_label'][:, source_index:source_index + 1]
-    print('component label shape:', component_label.shape)
 
     mixture = mixture.to(device=device, dtype=torch.float32)
     component_label = component_label.to(device=device, dtype=torch.float32)
@@ -42,7 +52,6 @@ def predict_img(net,
     try:
         component_loss = criterion_component(component_output, component_label)
         classify_loss = criterion_class(class_output, class_label)
-        print(component_loss.item(), component_output.shape)
 
     except RuntimeError:
         print(f'input_mixture:{mixture.shape},\n'
@@ -51,6 +60,7 @@ def predict_img(net,
               f'component_label:{component_label.shape}')
         raise Exception
 
+    class_accuracy = symbol_accuracy(class_label, class_output, class_label.shape[0])
     pickle_file = open(pickle_file_path, 'wb')
     pickle.dump({'component_output': component_output,
                  'class_output': class_output,
@@ -64,7 +74,8 @@ def predict_img(net,
     print(f'classify_loss:{classify_loss}, \n'
           f'component_loss:{component_loss}, \n'
           f'total_loss:{(1-gamma)*component_loss + gamma*classify_loss}, \n'
-          f'pickle_file_path:{pickle_file_path}')
+          f'pickle_file_path:{pickle_file_path},\n'
+          f'symbol accuracy:{class_accuracy}')
 
     return {'component_output': component_output,
             'class_output': class_output,
