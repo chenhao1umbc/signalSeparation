@@ -17,7 +17,7 @@ from torch.utils.data import DataLoader, random_split, RandomSampler
 
 dir_img = 'data/imgs/'
 dir_mask = 'data/masks/'
-dir_checkpoint = 'checkpoints_with_class_3/'
+dir_checkpoint = 'checkpoints_with_class_0/'
 dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
                   'datasets/dataset_0426_14000_128x20/component/Zigbee.mat.pickle',
@@ -26,10 +26,10 @@ dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
 dir_train_sample_pickle = 'datasets/dataset_0426_14000_128x20/train_set.pickle'
 dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
 training_set_visualization_file_path = 'train_set_visualization.pickle'
-loss_storage_file_path = 'scoreFile.pickle'
-loss_storage_file_path_val = 'scoreFileVal.pickle'
+loss_storage_file_path = 'scoreFile_0.pickle'
+loss_storage_file_path_val = 'scoreFileVal_0.pickle'
 gamma = 0.1
-source_index = 3
+source_index = 0
 
 
 def count_parameters(model):
@@ -131,19 +131,19 @@ def train_net(net,
                 total_loss = (1-gamma)*loss + gamma*class_loss
 
                 epoch_loss += total_loss.item()
-
-                for val_batch in val_loader:
-                    pickle_file = open(training_set_visualization_file_path, 'wb')
-                    pickle.dump({'component_output': masks_pred,
-                                 'class_output': class_output,
-                                 'mixture': imgs,
-                                 'component_label': val_batch['source_labels'],
-                                 'class_label': val_batch['class_label'],
-                                 'classify_loss': None,
-                                 'component_loss': loss.item()}, pickle_file)
-                    pickle_file.close()
-                    print(f'val_batch visualization file stored! File path:{training_set_visualization_file_path}')
-                    break
+                if batch_index == 1:
+                    for val_batch in val_loader:
+                        pickle_file = open(training_set_visualization_file_path, 'wb')
+                        pickle.dump({'component_output': masks_pred,
+                                     'class_output': class_output,
+                                     'mixture': imgs,
+                                     'component_label': val_batch['source_labels'],
+                                     'class_label': val_batch['class_label'],
+                                     'classify_loss': None,
+                                     'component_loss': loss.item()}, pickle_file)
+                        pickle_file.close()
+                        print(f'val_batch visualization file stored! File path:{training_set_visualization_file_path}')
+                        break
 
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
