@@ -24,6 +24,7 @@ def symbol_accuracy(class_label, class_output, batch_size):
     for item_index in range(batch_size):
         output = int((1 - threshold) + class_output[item_index, 0].cpu().detach().numpy())
         label = int((1 - threshold) + class_label[item_index, 0].cpu().detach().numpy())
+        print(output, label)
         if output == label:
             TP += 1
     return TP / batch_size
