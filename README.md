@@ -13,6 +13,11 @@ To predict and classify a batch of mixture signals
 
 You can specify which model file to use with `--model MODEL.pth`.
 
+### Visualization
+
+To visualize the separated component signals, please run visualization.ipynb
+
+
 ### Training
 
 ```shell script
