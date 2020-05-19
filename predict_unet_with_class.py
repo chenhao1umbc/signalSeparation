@@ -46,7 +46,7 @@ def predict_img(net,
 
     except RuntimeError:
         print(f'input_mixture:{mixture.shape},\n'
-              f' class_label:{component_label.shape},\n'
+              f' class_label:{class_label.shape},\n'
               f' component_output:{component_output.shape},\n'
               f'component_label:{component_label.shape}')
         raise Exception
@@ -56,6 +56,7 @@ def predict_img(net,
                  'class_output': class_output,
                  'mixture': mixture,
                  'component_label': component_label,
+                 'class_label': class_label,
                  'classify_loss': classify_loss,
                  'component_loss': component_loss}, pickle_file)
     pickle_file.close()
@@ -69,6 +70,7 @@ def predict_img(net,
             'class_output': class_output,
             'mixture': mixture,
             'component_label': component_label,
+            'class_label': class_label,
             'classify_loss': classify_loss,
             'component_loss': component_loss}
 
