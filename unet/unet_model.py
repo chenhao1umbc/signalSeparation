@@ -24,15 +24,7 @@ class UNet(nn.Module):
         self.up3 = Up(256, 128, bilinear)
         self.up4 = Up(128, 64 * factor, bilinear)
         self.outc = OutConv(64, n_classes)
-        self.classify = nn.Linear(4096, 1)
         self.sigmoid = nn.Sigmoid()
-
-    def classifier(self, x):
-        batch_size = x.shape[0]
-        x = x.view(batch_size, 1, -1)
-        x = self.classify(x)
-        print(f"classifier output shape: {x.shape}")
-        return self.sigmoid(x)
 
     def forward(self, x):
         x1 = self.inc(x)

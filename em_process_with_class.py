@@ -23,6 +23,16 @@ nb_channels = 1
 nb_sources = 4
 
 
+def symbol_accuracy(class_label, class_output, batch_size, threshold=0.5):
+    TP = 0
+    for item_index in range(batch_size):
+        output = int((1 - threshold) + class_output[item_index, 0].cpu().detach().numpy())
+        label = int((1 - threshold) + class_label[item_index, 0].cpu().detach().numpy())
+        if output == label:
+            TP += 1
+    return TP / batch_size
+
+
 def get_args():
     parser = argparse.ArgumentParser(description='Arguments parser for EM process',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -78,10 +88,10 @@ class EMCapsule:
     def psd_model(net, psd_mixture):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         psd_mixture = psd_mixture.to(device=device, dtype=torch.float32)
-        output = net(psd_mixture)
-        return output.cpu().detach().numpy()
+        component_output, class_output = net(psd_mixture)
+        return component_output.cpu().detach().numpy(), class_output
 
-    def process(self, iteration, psd_mixture, component_label):
+    def process(self, iteration, psd_mixture, component_label, class_label):
         psd_sources = torch.zeros([batch_size, nb_sources, sample_length, freq_bin])
         psd_sources = psd_sources.to(device=self.device, dtype=torch.float32)
         criterion_component = nn.MSELoss().cuda()
@@ -97,10 +107,11 @@ class EMCapsule:
             # Psd modeling
             for label in self.init_nets:
                 if it == 0:
-                    psd_source = self.psd_model(self.init_nets[label], psd_mixture)
+                    psd_source, class_output = self.psd_model(self.init_nets[label], psd_mixture)
                 else:
-                    psd_source = self.psd_model(self.refine_nets[label],
-                                                psd_sources[:, source_index:source_index+1, :, :])
+                    psd_source, class_output = self.psd_model(self.refine_nets[label],
+                                                              psd_sources[:, source_index:source_index+1, :, :])
+
 
                 for batch_index in range(batch_size):
                     flatten_sources[batch_index * sample_length:(batch_index + 1) * sample_length, :, 0, source_index] = \
@@ -167,6 +178,7 @@ if __name__ == "__main__":
     train_set_info = pickle.load(input_pickle_file_path)
     mixture = train_set_info['mixture']
     component_label = train_set_info['component_label']
+    class_label = train_set_info['class_label']
 
     args = get_args()
 
@@ -184,4 +196,4 @@ if __name__ == "__main__":
                            refine_model_paths=refine_model_paths,
                            classify_model_paths=class_model_paths)
 
-    em_capsule.process(iteration=args.iterations, psd_mixture=mixture, component_label=component_label)
+    em_capsule.process(iteration=args.iterations, psd_mixture=mixture, component_label=component_label, class_label=class_label)
