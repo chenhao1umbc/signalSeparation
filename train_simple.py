@@ -33,9 +33,6 @@ source_index = 0
 
 
 def count_parameters(model):
-    for name, param in model.named_parameters():
-        if param.requires_grad:
-            print(name, param.shape)
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
