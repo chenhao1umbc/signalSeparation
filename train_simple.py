@@ -14,10 +14,10 @@ from unet import UNetSmallWithClass
 from utils.dataset import PsdDatasetWithClass
 from torch.utils.data import DataLoader, random_split, RandomSampler
 
-
+source_index = 3
 dir_img = 'data/imgs/'
 dir_mask = 'data/masks/'
-dir_checkpoint = 'checkpoints_simple_with_class_0/'
+dir_checkpoint = 'checkpoints_simple_with_class_' + str(source_index) + '/'
 dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
                   'datasets/dataset_0426_14000_128x20/component/Zigbee.mat.pickle',
@@ -26,10 +26,9 @@ dir_list_label = ['datasets/dataset_0426_14000_128x20/component/Blt.mat.pickle',
 dir_train_sample_pickle = 'datasets/dataset_0426_14000_128x20/train_set.pickle'
 dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
 training_set_visualization_file_path = 'train_set_visualization.pickle'
-loss_storage_file_path = 'scoreFile_0.pickle'
-loss_storage_file_path_val = 'scoreFileVal_0.pickle'
+loss_storage_file_path = 'scoreFile_' + str(source_index) + '.pickle'
+loss_storage_file_path_val = 'scoreFileVal_' + str(source_index) + '.pickle'
 gamma = 0.1
-source_index = 0
 
 
 def count_parameters(model):
@@ -46,7 +45,7 @@ def train_net(net,
               img_scale=0.5,
               dir_mixture=dir_mixture,
               dir_list_label=dir_list_label,
-              override=False):
+              override=True):
 
     dataset = PsdDatasetWithClass(dir_mixture, dir_list_label)
     n_val = int(len(dataset) * val_percent)
@@ -110,7 +109,7 @@ def train_net(net,
 
                 imgs = batch['mixture'].unsqueeze(1)
                 true_masks = batch['source_labels'][:, source_index, :, :].unsqueeze(1)
-                print(f"Mask shape:{true_masks.shape}")
+                #print(f"Mask shape:{true_masks.shape}")
                 true_class = batch['class_label'][:, source_index:source_index+1]
 
                 assert imgs.shape[1] == net.n_channels, \
