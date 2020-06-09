@@ -33,6 +33,9 @@ source_index = 0
 
 
 def count_parameters(model):
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            print(name, param.shape)
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
@@ -110,6 +113,7 @@ def train_net(net,
 
                 imgs = batch['mixture'].unsqueeze(1)
                 true_masks = batch['source_labels'][:, source_index, :, :].unsqueeze(1)
+                print(f"Mask shape:{true_masks.shape}")
                 true_class = batch['class_label'][:, source_index:source_index+1]
 
                 assert imgs.shape[1] == net.n_channels, \
@@ -124,7 +128,7 @@ def train_net(net,
                 
                 masks_pred, class_output = net(imgs)
 
-                #print(f"Parameter num:{count_parameters(net)}")
+                count_parameters(net)
 
                 loss = criterion(masks_pred, true_masks)
                 #print("the shapes for classes", class_output.shape, true_class.shape)
