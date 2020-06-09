@@ -109,7 +109,7 @@ def train_net(net,
 
                 imgs = batch['mixture'].unsqueeze(1)
                 true_masks = batch['source_labels'][:, source_index, :, :].unsqueeze(1)
-                #print(f"Mask shape:{true_masks.shape}")
+                print(f"Mask shape:{batch['source_labels'].shape}")
                 true_class = batch['class_label'][:, source_index:source_index+1]
 
                 assert imgs.shape[1] == net.n_channels, \
