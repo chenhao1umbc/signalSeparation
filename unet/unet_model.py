@@ -40,9 +40,9 @@ class UNet(nn.Module):
         return logits
 
 
-class UNetWithClass(nn.Module):
+class UNetWithClass(UNet):
     def __init__(self, n_channels, n_classes, bilinear=True):
-        super(UNetWithClass, self).__init__()
+        super(UNetWithClass, self).__init__(n_channels, n_classes)
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
@@ -82,9 +82,9 @@ class UNetWithClass(nn.Module):
         return logits, class_output
 
 
-class UNetSmallWithClass(nn.Module):
+class UNetSmallWithClass(UNet):
     def __init__(self, n_channels, n_classes, bilinear=True):
-        super(UNetSmallWithClass, self).__init__()
+        super(UNetSmallWithClass, self).__init__(n_channels, n_classes)
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear

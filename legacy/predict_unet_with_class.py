@@ -11,12 +11,12 @@ import pickle
 import glob
 from unet import UNetWithClass
 
-pickle_file_path = './val_output_pickle_file'
+pickle_file_path = '../val_output_pickle_file'
 val_percent = 0.1
 gamma = 0.1
 threshold = 0.5
 
-train_set_file_path = 'train_set_visualization.pickle'
+train_set_file_path = '../train_set_visualization.pickle'
 
 
 def symbol_accuracy(class_label, class_output, batch_size):

@@ -14,16 +14,16 @@ from utils.dataset import PsdDatasetWithClass
 from torch.utils.data import DataLoader, random_split
 
 
-dir_mixture = 'datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
+dir_mixture = '../datasets/dataset_0426_14000_128x20/mixture_dataset_multiple/mixture_data_14000.pickle'
 dir_list_label = glob.glob('datasets/dataset_0426_14000_128x20/component/*.pickle')
-pickle_file_path = './val_output_pickle_file_fcn'
-dir_train_sample_pickle = 'datasets/dataset_0426_14000_128x20/train_set.pickle'
-dir_val_sample_pickle = 'datasets/dataset_0426_14000_128x20/val_set.pickle'
+pickle_file_path = '../val_output_pickle_file_fcn'
+dir_train_sample_pickle = '../datasets/dataset_0426_14000_128x20/train_set.pickle'
+dir_val_sample_pickle = '../datasets/dataset_0426_14000_128x20/val_set.pickle'
 val_percent = 0.1
 gamma = 0.5
 
-train_set_file_path = 'train_set_visualization.pickle'
-val_set_root_path = 'val_output_pickle_file_fcn'
+train_set_file_path = '../train_set_visualization.pickle'
+val_set_root_path = '../val_output_pickle_file_fcn'
 
 
 def predict_img(net,
