@@ -2,8 +2,6 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from dice_loss import dice_coeff
-
 gamma = 0.1
 
 
