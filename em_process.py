@@ -75,7 +75,7 @@ class EMCapsule:
         logging.info("Model loaded !")
 
     @staticmethod
-    def psd_model(net, psd_mixture):
+    def psd_model(cls, net, psd_mixture):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         psd_mixture = psd_mixture.to(device=device, dtype=torch.float32)
         output = net(psd_mixture)
