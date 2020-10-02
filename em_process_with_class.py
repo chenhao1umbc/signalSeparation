@@ -174,20 +174,20 @@ class EMCapsule:
 
 if __name__ == "__main__":
 
-    input_pickle_file_path = open(train_set_file_path, 'rb')
-    train_set_info = pickle.load(input_pickle_file_path)
-    mixture = train_set_info['mixture']
-    component_label = train_set_info['component_label']
-    class_label = train_set_info['class_label']
+    # input_pickle_file_path = open(train_set_file_path, 'rb')
+    # train_set_info = pickle.load(input_pickle_file_path)
+    # mixture = train_set_info['mixture']
+    # component_label = train_set_info['component_label']
+    # class_label = train_set_info['class_label']
 
     args = get_args()
 
     # init_model_paths = glob.glob(args.init_model + '*.pth')
-    init_model_paths = ['init_models/blt.pth', 'init_models/ZigbeeOQPSK.pth',
-                        'init_models/ZigbeeASK.pth', 'init_models/ZigbeeBPSK.pth']
+    init_model_paths = ['../init_models/blt.pth', '../init_models/ZigbeeOQPSK.pth',
+                        '../init_models/ZigbeeASK.pth', '../init_models/ZigbeeBPSK.pth']
     # refine_model_paths = glob.glob(args.refine_models + '*.pth')
-    refine_model_paths = ['init_models/blt.pth', 'init_models/ZigbeeOQPSK.pth',
-                          'init_models/ZigbeeASK.pth', 'init_models/ZigbeeBPSK.pth']
+    refine_model_paths = ['../init_models/blt.pth', '../init_models/ZigbeeOQPSK.pth',
+                          '../init_models/ZigbeeASK.pth', '../init_models/ZigbeeBPSK.pth']
     class_model_paths = glob.glob(args.class_model + '*.pth')
 
     # print(init_model_paths)
