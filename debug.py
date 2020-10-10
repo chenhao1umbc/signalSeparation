@@ -1,32 +1,30 @@
-#%%
+# %% 
 from utils import *
-import pickle
-file = open('/home/chenhao1/zeyu/datasets/dataset_0426_14000_128x20//component/Blt.mat.pickle','rb')
-d = pickle.load(file)
+plt.rcParams['figure.dpi'] = 100
 
-plt.imshow(d[0].T, interpolation='None', aspect='auto')
-plt.colorbar()
+a = sio.loadmat('/home/chenhao1/Matlab/LMdata/fhss2_2000.mat')
+d = a['x']
+print(d.shape)
 
+f, t, Z = stft(d[0], fs=4e7, nperseg=256, boundary=None)
+plt.figure()
+plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
 
-# %%
-from scipy.signal import stft
-from scipy.signal import istft
-fs = 10e3
-N = 1e5
-amp = 2 * np.sqrt(2)
-noise_power = 0.01 * fs / 2
-time = np.arange(N) / float(fs)
-mod = 500*np.cos(2*np.pi*0.25*time)
-carrier = amp * np.sin(2*np.pi*3e3*time + mod)
-noise = np.random.normal(scale=np.sqrt(noise_power),
-                         size=time.shape)
-noise *= np.exp(-time/5)
-x = carrier + noise
-
-f, t, Zxx = stft(x, fs, nperseg=500)
-xh = istft(Zxx, nperseg=500)
-print((xh[1] - x).sum())
-print('done')
+f, t, Z = stft(d[1], fs=4e7, nperseg=256, boundary=None)
+plt.figure()
+plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
 
 
 # %%
+from utils import *
+plt.rcParams['figure.dpi'] = 100
+
+a = h5py.File('/home/chenhao1/Matlab/Hsctnet/test.mat', 'r')
+data = a['x'][0][:10]['real'] + 1j*a['x'][0][:10]['imag']
+d = a['x'][0]['real'] + 1j*a['x'][0]['imag']
+dd = d[:int(4e5)]
+f, t, Z = stft(dd, fs=4e7, nperseg=128, boundary=None)
+plt.imshow(abs(np.roll(Z, 64, axis=0)), aspect='auto', interpolation='None')
+print(f'Z is shape of {Z.shape}')
+
+

@@ -2,15 +2,15 @@
 import os
 import scipy.io as sio
 from scipy.signal import stft 
-# import h5py 
+import h5py 
 import numpy as np
-
 
 import torch
 from torch import nn
 import torch.nn.functional as Func
 import torch.utils.data as Data
 import matplotlib.pyplot as plt
+plt.rcParams['figure.dpi'] = 100
 
 from unet.unet_model import UNet
 
