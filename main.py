@@ -30,7 +30,8 @@ label1[np.arange(idx.size),idx] = 1  # one hot encoding
 
 label2, label3 = label_gen(2), label_gen(3)
 label4, label5 = label_gen(4), label_gen(5)
-
+label6 = np.ones((1,6))
+labels = np.concatenate( (label1, label2, label3, label4, label5, label6), axis=0)
 
 
 "make test dataset with labels"
