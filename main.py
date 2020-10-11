@@ -7,7 +7,7 @@ from utils import *
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 data = {}
 for i in range(6):
-    temp = sio.loadmat( '/home/chenhao1/Matlab/LMdata/'+var_name[i]+'_2000.mat')
+    temp = sio.loadmat( '/home/chenhao1/Matlab/LMdata/'+var_name[i]+'_256_2k.mat')
     dd = (np.sum((abs(temp['x'])**2), 1)**0.5).reshape(2000, 1)
     data[i] = temp['x'] / dd  # normalized very data to 1
     # d = torch.tensor(a['x']).to(torch.cfloat)  # torch complex64
@@ -17,13 +17,13 @@ np.random.seed(0)
 for i in range(6): # data[i].shape is (2000, 32896)
     np.random.shuffle(data[i])
 
-train_val = np.zeros((6, 1600, data[0].shape[1]))
-test = np.zeros((6, 400, data[0].shape[1]))
+train_val = np.zeros((6, 1600, data[0].shape[1])).astype('complex64')
+test = np.zeros((6, 400, data[0].shape[1])).astype('complex64')
 for i in range(6): # split 1600 for tain_val, 400 for test
     train_val[i] = data[i][:1600]
     test[i] = data[i][-400:]
 
-#%% "make train_val datasets with labels"
+#%% generate labels
 idx = np.arange(6)
 label1 = np.zeros((idx.size, idx.max()+1))
 label1[np.arange(idx.size),idx] = 1  # one hot encoding
@@ -33,14 +33,11 @@ label4, label5 = label_gen(4), label_gen(5)
 label6 = np.ones((1,6))
 labels = np.concatenate( (label1, label2, label3, label4, label5, label6), axis=0)
 
+#%% save mixture data
+save_mix(train_val, label1, label2, label3, label4, label5, label6, pre='train_')
+save_mix(test, label1, label2, label3, label4, label5, label6, pre='test_')
 
-"make test dataset with labels"
-
-
-
-
-#%% generate train, val, test data
-
+print('done')
 
 
 

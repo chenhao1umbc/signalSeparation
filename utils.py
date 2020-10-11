@@ -42,3 +42,47 @@ def label_gen(n):
     for i in range(lb_idx.shape[0]):
         label_n[i, lb_idx[i]] = 1
     return label_n
+
+
+def mix_data_torch(x, labels):
+    """This functin will mix the data according the to labels
+
+    Parameters
+    ----------
+    x : [tensor of complex]
+        [data with shape of [n_classes, n_samples, time_len]]
+    labels : [matrix of int]
+        [maxtrix of [n_samples, n_classes]]
+
+    Returns
+    -------
+    [complex pytorch]
+        [mixture data with shape of [n_samples, time_len] ]
+    """
+    n = labels.shape[0]
+    output = np.zeros( (n, x.shape[1], x.shape[2]) ).astype('complex64')
+    for i1 in range(n):
+        s = 0
+        for i2 in range(6):
+            if labels[i1, i2] == 1:
+                s = s + x[i2]
+            else:
+                pass
+        output[i1] = s
+    return torch.tensor(output), torch.tensor(labels).to(torch.float)
+
+
+def save_mix(x, lb1, lb2, lb3, lb4, lb5, lb6, pre='_'):
+    mix_1, label1 = mix_data_torch(x, lb1)  # output is in pytorch tensor
+    mix_2, label2 = mix_data_torch(x, lb2)
+    mix_3, label3 = mix_data_torch(x, lb3)
+    mix_4, label4 = mix_data_torch(x, lb4)
+    mix_5, label5 = mix_data_torch(x, lb5)
+    mix_6, label6 = mix_data_torch(x, lb6)
+
+    torch.save({'data':mix_1, 'label':label1},pre+'dict_mix_1.pt')
+    torch.save({'data':mix_2, 'label':label2},pre+'dict_mix_2.pt')
+    torch.save({'data':mix_3, 'label':label3},pre+'dict_mix_3.pt')
+    torch.save({'data':mix_4, 'label':label4},pre+'dict_mix_4.pt')
+    torch.save({'data':mix_5, 'label':label5},pre+'dict_mix_5.pt')
+    torch.save({'data':mix_6, 'label':label6},pre+'dict_mix_6.pt')
