@@ -7,9 +7,9 @@ from utils import *
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 data = {}
 for i in range(6):
-    a = sio.loadmat( '/home/chenhao1/Matlab/LMdata/'+var_name[i]+'_2000.mat')
-    dd = (np.sum((abs(a['x'])**2), 1)**0.5).reshape(2000, 1)
-    data[i] = a['x'] / dd  # normalized very data to 1
+    temp = sio.loadmat( '/home/chenhao1/Matlab/LMdata/'+var_name[i]+'_2000.mat')
+    dd = (np.sum((abs(temp['x'])**2), 1)**0.5).reshape(2000, 1)
+    data[i] = temp['x'] / dd  # normalized very data to 1
     # d = torch.tensor(a['x']).to(torch.cfloat)  # torch complex64
 
 "shuffle and split data to train_val and test"
@@ -21,18 +21,25 @@ train_val = np.zeros((6, 1600, data[0].shape[1]))
 test = np.zeros((6, 400, data[0].shape[1]))
 for i in range(6): # split 1600 for tain_val, 400 for test
     train_val[i] = data[i][:1600]
-    test = data[i][-400:]
-"make train_val datasets with labels"
+    test[i] = data[i][-400:]
 
-np.abs()
+"make train_val datasets with labels"
+idx = np.arange(6)
+label1 = np.zeros((idx.size, idx.max()+1))
+label1[np.arange(idx.size),idx] = 1  # one hot encoding
+
+label2, label3 = label_gen(2), label_gen(3)
+label4, label5 = label_gen(4), label_gen(5)
+
+
+
 "make test dataset with labels"
 
 
 
 
 #%% generate train, val, test data
-# import itertools
-# all_combos = list(itertools.combinations([0,1,2,3,4,5], 2))
+
 
 
 
@@ -54,3 +61,4 @@ np.abs()
 # # update source spectrogram
 # for i in range(n_class):
 #     v[j] = nets[i](z[j])
+# %%
