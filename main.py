@@ -23,7 +23,7 @@ for i in range(6): # split 1600 for tain_val, 400 for test
     train_val[i] = data[i][:1600]
     test[i] = data[i][-400:]
 
-"make train_val datasets with labels"
+#%% "make train_val datasets with labels"
 idx = np.arange(6)
 label1 = np.zeros((idx.size, idx.max()+1))
 label1[np.arange(idx.size),idx] = 1  # one hot encoding

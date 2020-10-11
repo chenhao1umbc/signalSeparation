@@ -37,7 +37,7 @@ def label_gen(n):
     n : [int]
         how many components in the mixture
     """
-    lb_idx = np.array(list(itertools.combinations([0,1,2,3,4,5], 2)))
+    lb_idx = np.array(list(itertools.combinations([0,1,2,3,4,5], n)))
     label_n = np.zeros( (lb_idx.shape[0], 6) )
     for i in range(lb_idx.shape[0]):
         label_n[i, lb_idx[i]] = 1
