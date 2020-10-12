@@ -108,7 +108,7 @@ def get_label(lb, shape):
     return label
 
 
-def get_mixdata_label(mix=1):
+def get_mixdata_label(mix=1, pre='train_'):
     """loading mixture data and prepare labels
 
     Parameters
@@ -120,7 +120,7 @@ def get_mixdata_label(mix=1):
     -------
     [data, label]
     """
-    dict = torch.load('../data_ss/train_dict_mix_'+str(mix)+'.pt')
+    dict = torch.load('../data_ss/'+pre+'dict_mix_'+str(mix)+'.pt')
     label = get_label(dict['label'], dict['data'].shape[:2])
     return dict['data'], label
 
@@ -135,12 +135,12 @@ def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30):
     ltr = l[ind]  # find labels
 
     "get the stft with low freq. in the center"
-    f_bins = 256
+    f_bins = 200
     f, t, Z = stft(x[ind], fs=4e7, nperseg=f_bins, boundary=None)
     xtr = torch.tensor(np.log(abs(np.roll(Z, f_bins//2, axis=1))))
 
     "get the cleaned source as the ground-truth"
-    f, t, Z = stft(y[0], fs=4e7, nperseg=f_bins, boundary=None)
+    f, t, Z = stft(y[which_class], fs=4e7, nperseg=f_bins, boundary=None)
     temp = torch.tensor(np.log(abs(np.roll(Z, f_bins//2, axis=1))))
     n_tile = int(xtr.shape[0]/n_sample)
     ytr = torch.tensor(np.tile(temp, (n_tile, 1,1)))

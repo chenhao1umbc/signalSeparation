@@ -7,7 +7,7 @@ from utils import *
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 data = {}
 for i in range(6):
-    temp = sio.loadmat( '/home/chenhao1/Matlab/LMdata/'+var_name[i]+'_256_2k.mat')
+    temp = sio.loadmat( '/home/chenhao1/Matlab/LMdata/'+var_name[i]+'_200_2k.mat')
     dd = (np.sum((abs(temp['x'])**2), 1)**0.5).reshape(2000, 1)
     data[i] = temp['x'] / dd  # normalized very data to 1
     # d = torch.tensor(a['x']).to(torch.cfloat)  # torch complex64
@@ -33,11 +33,10 @@ label4, label5 = label_gen(4), label_gen(5)
 label6 = np.ones((1,6))
 
 #%% save mixture data
-save_mix(train_val, label1, label2, label3, label4, label5, label6, pre='train_')
-save_mix(test, label1, label2, label3, label4, label5, label6, pre='test_')
+save_mix(train_val, label1, label2, label3, label4, label5, label6, pre='train_200_')
+save_mix(test, label1, label2, label3, label4, label5, label6, pre='test_200_')
 
 print('done')
-
 
 
 
@@ -52,19 +51,20 @@ plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
 """dict have keys ['data'] shape of [n_comb, n_sample, time_len]
     ['label'] shape of [n_comb, n_class=6]
 """
-d, l = get_mixdata_label(mix=1)
+d, l = get_mixdata_label(mix=1, pre='train_200_')
 d1 = d.clone()
 for i in range(2,7):
-    dt, lt = get_mixdata_label(mix=i)  # temp
+    dt, lt = get_mixdata_label(mix=i, pre='train_200_')  # temp
     d, l = torch.cat( (d, dt)), torch.cat( (l , lt))
-xtr, ltr, ytr = d[:, :1200], l[:, :1200], d1[:, :1200]
-xva, lva, yva = d[:, 1200:], l[:, 1200:], d1[:, 1200:]
+xtr, ltr, ytr = d[:, :700], l[:, :700], d1[:, :700]
+xva, lva, yva = d[:, 700:800], l[:, 700:800], d1[:, 700:800]
 
 "train data for ble" # "training data is the log(abs(stft(x)))"
 "0-5 is ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']"
-# get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_tr')
-get_Unet_input(xva, lva, yva, which_class=0, tr_va_te='_va')
-
+get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_tr_200')
+get_Unet_input(xva, lva, yva, which_class=0, tr_va_te='_va_200')
+get_Unet_input(xtr, ltr, ytr, which_class=2, tr_va_te='_tr_200')
+get_Unet_input(xva, lva, yva, which_class=2, tr_va_te='_va_200')
 
 #%% algorithm
 # "data is x in [Channels, t], cj in [Channels, f, n]"
