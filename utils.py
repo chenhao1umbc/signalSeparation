@@ -108,7 +108,7 @@ def get_label(lb, shape):
     return label
 
 
-def get_mixdata_label(mix=1):
+def get_mixdata_label(mix=1, pre='train_'):
     """loading mixture data and prepare labels
 
     Parameters
@@ -120,7 +120,7 @@ def get_mixdata_label(mix=1):
     -------
     [data, label]
     """
-    dict = torch.load('../data_ss/train_dict_mix_'+str(mix)+'.pt')
+    dict = torch.load('../data_ss/'+pre+'dict_mix_'+str(mix)+'.pt')
     label = get_label(dict['label'], dict['data'].shape[:2])
     return dict['data'], label
 
