@@ -5,12 +5,12 @@ opt = {}
 opt['n_epochs'] = 101
 opt['lr'] = 0.001
 
-model = UNet(n_ch_in=1, n_ch_out=1).cuda()
+model = UNet(n_channels=1, n_classes=1).cuda()
 # optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
 optimizer = torch.optim.Adam(model.parameters(), lr=opt['lr'], weight_decay=1e-5)
 criterion = nn.MSELoss()
-tr = torch.save('fhss1_tr.pt')  # x, l, y
-va = torch.save('fhss1_va.pt')
+tr = torch.load('../data/data_ss/fhss1_tr.pt')  # x, l, y
+va = torch.load('../data/data_ss/fhss1_va.pt')
 
 loss_train = []
 loss_cv = []
