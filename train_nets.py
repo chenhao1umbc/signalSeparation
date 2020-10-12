@@ -9,9 +9,8 @@ model = UNet(n_channels=1, n_classes=1).cuda()
 # optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
 optimizer = torch.optim.Adam(model.parameters(), lr=opt['lr'], weight_decay=1e-5)
 criterion = nn.MSELoss()
-tr = torch.load('../data/data_ss/fhss1_tr.pt')  # x, y, l
-va = torch.load('../data/data_ss/fhss1_va.pt')
-
+tr = torch.load('../data/data_ss/fhss1_tr_200.pt')  # x, y, l
+va = torch.load('../data/data_ss/fhss1_va_200.pt')
 
 #%%
 loss_train = []
@@ -20,12 +19,11 @@ loss_cv = []
 for epoch in range(opt['n_epochs']):
     
     model.train()
-
-    for i, (x, y, l) in enumerate(tr): 
-        out = model(x.cuda())
+    for iter, (x, y, l) in enumerate(tr): 
+        out = model(x.unsqueeze(1).cuda())
         optimizer.zero_grad()  
 
-        loss = criterion(out, y.cuda())              
+        loss = criterion(out.squeeze(), y.cuda())              
         loss.backward()
         optimizer.step()
         loss_train.append(loss.data.item())
@@ -34,23 +32,25 @@ for epoch in range(opt['n_epochs']):
     model.eval()
     with torch.no_grad():
         cv_loss = 0
-        for (xval, yval, mval) in va: 
-            cv_cuda = xval.cuda()
-            cv_yh = model(cv_cuda)[0].cpu()
+        for xval, yval, lval in va: 
+            cv_cuda = xval.unsqueeze(1).cuda()
+            cv_yh = model(cv_cuda).cpu().squeeze()
             cv_loss = cv_loss + Func.mse_loss(cv_yh, yval)
             torch.cuda.empty_cache()
-        loss_cv.append(cv_loss/5)
+        loss_cv.append(cv_loss/106)  # averaged over all the iterations
     
-    if epoch%10 ==0:
+    if epoch%1 ==0:
         plt.figure()
         plt.plot(loss_train[::200], '-x')
         plt.title('train loss per 200 iter')
 
         plt.figure()
         plt.plot(loss_cv, '--xr')
-        plt.title('train loss per 200 iter')
+        plt.title('val loss per epoch')
         plt.show()
 
-    torch.save(model.state_dict(), './eig_unet'+str(epoch)+'.pt')
+    torch.save(model.state_dict(), './f1_unet'+str(epoch)+'.pt')
     print('current epoch is ', epoch)
 
+
+# %%
