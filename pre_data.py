@@ -61,25 +61,10 @@ xtr, ltr, ytr = d[:, :1200], l[:, :1200], d1[:, :1200]
 xva, lva, yva = d[:, 1200:], l[:, 1200:], d1[:, 1200:]
 
 "train data for ble" # "training data is the log(abs(stft(x)))"
-n_sample, t_len = xtr.shape[1:]
-xtr = xtr.reshape(-1, t_len)
-ltr = ltr.reshape(-1, 6)
+"0-5 is ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']"
+get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_tr')
+get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_va')
 
-ind = ltr[:, 0]==1.0  # find the index, which belonged to this class
-ble_ltr = ltr[ind]  # find labels
-
-"get the stft with low freq. in the center"
-f, t, Z = stft(xtr[ind], fs=4e7, nperseg=256, boundary=None)
-ble_xtr = torch.tensor(np.log(abs(np.roll(Z, 128, axis=1))))
-
-"get the cleaned source as the ground-truth"
-f, t, Z = stft(ytr[0], fs=4e7, nperseg=256, boundary=None)
-temp = torch.tensor(np.log(abs(np.roll(Z, 128, axis=1))))
-n_tile = int(ble_xtr.shape[0]/n_sample)
-ble_ytr = torch.tensor(np.tile(temp, (n_tile, 1,1)))
-
-tr = Data.TensorDataset(ble_xtr, ble_ytr, ble_ltr)
-tr = Data.DataLoader(tr, batch_size=30, shuffle=True)
 
 #%% algorithm
 # "data is x in [Channels, t], cj in [Channels, f, n]"

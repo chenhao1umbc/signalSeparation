@@ -123,3 +123,31 @@ def get_mixdata_label(mix=1):
     dict = torch.load('../data_ss/train_dict_mix_'+str(mix)+'.pt')
     label = get_label(dict['label'], dict['data'].shape[:2])
     return dict['data'], label
+
+
+def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30):
+    class_names = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+    n_sample, t_len = x.shape[1:]
+    x = x.reshape(-1, t_len)
+    l = l.reshape(-1, 6)
+
+    ind = l[:, which_class]==1.0  # find the index, which belonged to this class
+    ltr = l[ind]  # find labels
+
+    "get the stft with low freq. in the center"
+    f_bins = 256
+    f, t, Z = stft(x[ind], fs=4e7, nperseg=f_bins, boundary=None)
+    xtr = torch.tensor(np.log(abs(np.roll(Z, f_bins//2, axis=1))))
+
+    "get the cleaned source as the ground-truth"
+    f, t, Z = stft(y[0], fs=4e7, nperseg=f_bins, boundary=None)
+    temp = torch.tensor(np.log(abs(np.roll(Z, f_bins//2, axis=1))))
+    n_tile = int(xtr.shape[0]/n_sample)
+    ytr = torch.tensor(np.tile(temp, (n_tile, 1,1)))
+
+    data = Data.TensorDataset(xtr, ytr, ltr)
+    data = Data.DataLoader(data, batch_size=n_batch, shuffle=True)
+
+    torch.save(class_names[which_class]+tr_va_te+'.pt') 
+    print('saved '+class_names[which_class]+tr_va_te)   
+
