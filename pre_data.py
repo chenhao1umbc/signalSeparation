@@ -43,7 +43,7 @@ print('done')
 
 #%% ___________________assuming mixture data is done___________________
 
-dict = torch.load('../data/train_dict_mix_6.pt')
+dict = torch.load('../data_ss/train_dict_mix_6.pt')
 f, t, Z = stft(dict['data'][0,0], fs=4e7, nperseg=256, boundary=None)
 plt.figure()
 plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
@@ -62,8 +62,8 @@ xva, lva, yva = d[:, 1200:], l[:, 1200:], d1[:, 1200:]
 
 "train data for ble" # "training data is the log(abs(stft(x)))"
 "0-5 is ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']"
-get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_tr')
-get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_va')
+# get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_tr')
+get_Unet_input(xva, lva, yva, which_class=0, tr_va_te='_va')
 
 
 #%% algorithm

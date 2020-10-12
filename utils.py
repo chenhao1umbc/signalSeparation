@@ -148,6 +148,6 @@ def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30):
     data = Data.TensorDataset(xtr, ytr, ltr)
     data = Data.DataLoader(data, batch_size=n_batch, shuffle=True)
 
-    torch.save(class_names[which_class]+tr_va_te+'.pt') 
+    torch.save(data, class_names[which_class]+tr_va_te+'.pt') 
     print('saved '+class_names[which_class]+tr_va_te)   
 
