@@ -1,7 +1,7 @@
 #%%
 from utils import *
-
 # stft will be done on the last dimension
+
 #%% data processing
 "raw data processing"
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
@@ -31,7 +31,6 @@ label1[np.arange(idx.size),idx] = 1  # one hot encoding
 label2, label3 = label_gen(2), label_gen(3)
 label4, label5 = label_gen(4), label_gen(5)
 label6 = np.ones((1,6))
-labels = np.concatenate( (label1, label2, label3, label4, label5, label6), axis=0)
 
 #%% save mixture data
 save_mix(train_val, label1, label2, label3, label4, label5, label6, pre='train_')
@@ -42,7 +41,43 @@ print('done')
 
 
 
-# #%% algorithm
+#%% ___________________assuming mixture data is done___________________
+
+dict = torch.load('../data/train_dict_mix_6.pt')
+f, t, Z = stft(dict['data'][0,0], fs=4e7, nperseg=256, boundary=None)
+plt.figure()
+plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
+
+#%% 
+"""dict have keys ['data'] shape of [n_comb, n_sample, time_len]
+    ['label'] shape of [n_comb, n_class=6]
+"""
+d, l = get_mixdata_label(mix=1)
+d1 = d.clone()
+for i in torch.arange(2,7):
+    dt, lt = get_mixdata_label(mix=1)  # temp
+    d, l = torch.cat( (d, dt)), torch.cat( (l , lt))
+xtr, ltr, ytr = d[:, :1200], l[:, :1200], d1[:, :1200]
+xva, lva, yva = d[:, 1200:], l[:, 1200:], d1[:, 1200:]
+
+"train data for ble"
+n_tile = xtr.shape[0]
+xtr = xtr.reshape(-1, d.shape[-1])
+ltr = ltr.reshape(-1, 6)
+
+ind = ltr[:, 0]==1.0
+ble_xtr = xtr[ind]
+ble_ltr = ltr[ind]
+
+ble_ytr = np.tile(ytr[0], (n_tile, 1))
+
+
+# "training data is the log(abs(stft(x)))"
+
+# va = Data.TensorDataset(x, y, l)  # x is input, y is output, l is label
+# va = Data.DataLoader(va, batch_size=30, shuffle=True)
+
+#%% algorithm
 # "data is x in [Channels, t], cj in [Channels, f, n]"
 # II = np.eye(6)
 
@@ -59,4 +94,3 @@ print('done')
 # # update source spectrogram
 # for i in range(n_class):
 #     v[j] = nets[i](z[j])
-# %%

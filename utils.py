@@ -80,9 +80,46 @@ def save_mix(x, lb1, lb2, lb3, lb4, lb5, lb6, pre='_'):
     mix_5, label5 = mix_data_torch(x, lb5)
     mix_6, label6 = mix_data_torch(x, lb6)
 
-    torch.save({'data':mix_1, 'label':label1},pre+'dict_mix_1.pt')
-    torch.save({'data':mix_2, 'label':label2},pre+'dict_mix_2.pt')
-    torch.save({'data':mix_3, 'label':label3},pre+'dict_mix_3.pt')
-    torch.save({'data':mix_4, 'label':label4},pre+'dict_mix_4.pt')
-    torch.save({'data':mix_5, 'label':label5},pre+'dict_mix_5.pt')
-    torch.save({'data':mix_6, 'label':label6},pre+'dict_mix_6.pt')
+    torch.save({'data':mix_1, 'label':label1}, pre+'dict_mix_1.pt')
+    torch.save({'data':mix_2, 'label':label2}, pre+'dict_mix_2.pt')
+    torch.save({'data':mix_3, 'label':label3}, pre+'dict_mix_3.pt')
+    torch.save({'data':mix_4, 'label':label4}, pre+'dict_mix_4.pt')
+    torch.save({'data':mix_5, 'label':label5}, pre+'dict_mix_5.pt')
+    torch.save({'data':mix_6, 'label':label6}, pre+'dict_mix_6.pt')
+
+
+def get_label(lb, shape):
+    """repeat the labels for the shape of mixture data
+
+    Parameters
+    ----------
+    lb : [torch.float matrix]
+        [matrix of labels]
+    shape : [tuple int]
+        [data shape]]
+
+    Returns
+    -------
+    [labels]
+        [large matrix]
+    """
+    n_comb, n_sample = shape
+    label = np.repeat(lb, n_sample, axis=0).reshape(n_comb, n_sample, 6 )
+    return label
+
+
+def get_mixdata_label(mix=1):
+    """loading mixture data and prepare labels
+
+    Parameters
+    ----------
+    mix : int, optional
+        [how many components in the mixture], by default 1
+
+    Returns
+    -------
+    [data, label]
+    """
+    dict = torch.load('../data_ss/train_dict_mix_'+str(mix)+'.pt')
+    label = get_label(dict['label'], dict['data'].shape[:2])
+    return dict['data'], label
