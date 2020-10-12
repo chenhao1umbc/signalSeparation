@@ -63,7 +63,8 @@ xva, lva, yva = d[:, 700:800], l[:, 700:800], d1[:, 700:800]
 "0-5 is ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']"
 get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_tr_200')
 get_Unet_input(xva, lva, yva, which_class=0, tr_va_te='_va_200')
-
+get_Unet_input(xtr, ltr, ytr, which_class=2, tr_va_te='_tr_200')
+get_Unet_input(xva, lva, yva, which_class=2, tr_va_te='_va_200')
 
 #%% algorithm
 # "data is x in [Channels, t], cj in [Channels, f, n]"

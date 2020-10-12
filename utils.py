@@ -135,12 +135,12 @@ def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30):
     ltr = l[ind]  # find labels
 
     "get the stft with low freq. in the center"
-    f_bins = 256
+    f_bins = 200
     f, t, Z = stft(x[ind], fs=4e7, nperseg=f_bins, boundary=None)
     xtr = torch.tensor(np.log(abs(np.roll(Z, f_bins//2, axis=1))))
 
     "get the cleaned source as the ground-truth"
-    f, t, Z = stft(y[0], fs=4e7, nperseg=f_bins, boundary=None)
+    f, t, Z = stft(y[which_class], fs=4e7, nperseg=f_bins, boundary=None)
     temp = torch.tensor(np.log(abs(np.roll(Z, f_bins//2, axis=1))))
     n_tile = int(xtr.shape[0]/n_sample)
     ytr = torch.tensor(np.tile(temp, (n_tile, 1,1)))
