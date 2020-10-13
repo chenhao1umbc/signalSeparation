@@ -126,7 +126,7 @@ def get_mixdata_label(mix=1, pre='train_'):
     return dict['data'], label
 
 
-def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30):
+def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30, shuffle=True):
     class_names = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
     n_sample, t_len = x.shape[1:]
     x = x.reshape(-1, t_len)
@@ -147,7 +147,7 @@ def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30):
     ytr = torch.tensor(np.tile(temp, (n_tile, 1,1)))
 
     data = Data.TensorDataset(xtr, ytr, ltr)
-    data = Data.DataLoader(data, batch_size=n_batch, shuffle=True)
+    data = Data.DataLoader(data, batch_size=n_batch, shuffle=shuffle)
 
     torch.save(data, class_names[which_class]+tr_va_te+'.pt') 
     print('saved '+class_names[which_class]+tr_va_te)   

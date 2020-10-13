@@ -58,13 +58,18 @@ for i in range(2,7):
     d, l = torch.cat( (d, dt)), torch.cat( (l , lt))
 xtr, ltr, ytr = d[:, :700], l[:, :700], d1[:, :700]
 xva, lva, yva = d[:, 700:800], l[:, 700:800], d1[:, 700:800]
+xte, lte, yte = d[:, 800:1000], l[:, 800:1000], d1[:, 800:1000]
 
 "train data for ble" # "training data is the log(abs(stft(x)))"
 "0-5 is ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']"
 get_Unet_input(xtr, ltr, ytr, which_class=0, tr_va_te='_tr_200')
 get_Unet_input(xva, lva, yva, which_class=0, tr_va_te='_va_200')
+get_Unet_input(xte, lte, yte, which_class=0, tr_va_te='_te_200', shuffle=False)
+
 get_Unet_input(xtr, ltr, ytr, which_class=2, tr_va_te='_tr_200')
 get_Unet_input(xva, lva, yva, which_class=2, tr_va_te='_va_200')
+get_Unet_input(xte, lte, yte, which_class=2, tr_va_te='_te_200', shuffle=False)
+
 
 #%% algorithm
 # "data is x in [Channels, t], cj in [Channels, f, n]"
