@@ -7,10 +7,21 @@ opt['lr'] = 0.001
 
 model = UNet(n_channels=1, n_classes=1).cuda()
 # optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
-optimizer = torch.optim.Adam(model.parameters(), lr=opt['lr'], weight_decay=1e-5)
+# optimizer = torch.optim.Adam(model.parameters(), lr=opt['lr'], weight_decay=1e-5)
+optimizer = optim.AdaBound(
+    model.parameters(),
+    lr= 1e-3,
+    betas= (0.9, 0.999),
+    final_lr = 0.1,
+    gamma=1e-3,
+    eps= 1e-8,
+    weight_decay=0,
+    amsbound=False,
+)
 criterion = nn.MSELoss()
 tr = torch.load('../data/data_ss/fhss1_tr_200.pt')  # x, y, l
 va = torch.load('../data/data_ss/fhss1_va_200.pt')
+
 
 #%%
 loss_train = []
@@ -19,7 +30,7 @@ loss_cv = []
 for epoch in range(opt['n_epochs']):
     
     model.train()
-    for iter, (x, y, l) in enumerate(tr): 
+    for i, (x, y, l) in enumerate(tr): 
         out = model(x.unsqueeze(1).cuda())
         optimizer.zero_grad()  
 
@@ -28,6 +39,7 @@ for epoch in range(opt['n_epochs']):
         optimizer.step()
         loss_train.append(loss.data.item())
         torch.cuda.empty_cache()
+        if i%50 == 0: print(f'Current iter is {i} in epoch {epoch}')
  
     model.eval()
     with torch.no_grad():
@@ -41,14 +53,14 @@ for epoch in range(opt['n_epochs']):
     
     if epoch%1 ==0:
         plt.figure()
-        plt.plot(loss_train[::200], '-x')
-        plt.title('train loss per 200 iter')
+        plt.plot(loss_train[-1400::50], '-x')
+        plt.title('train loss per 50 iter in last 1400 iterations')
 
         plt.figure()
         plt.plot(loss_cv, '--xr')
         plt.title('val loss per epoch')
         plt.show()
-
+    
     torch.save(model.state_dict(), './f1_unet'+str(epoch)+'.pt')
     print('current epoch is ', epoch)
 

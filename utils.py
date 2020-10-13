@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 plt.rcParams['figure.dpi'] = 100
 
 from unet.unet_model import UNet
+import torch_optimizer as optim
 
 "make the result reproducible"
 torch.manual_seed(0)
