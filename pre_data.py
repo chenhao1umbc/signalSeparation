@@ -41,11 +41,16 @@ print('done')
 
 
 #%% ___________________assuming mixture data is done___________________
+# dict = torch.load('../data_ss/train_dict_mix_6.pt')  # see 256 data
+# f, t, Z = stft(dict['data'][0,0], fs=4e7, nperseg=256, boundary=None)
+# plt.figure()
+# plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
 
-dict = torch.load('../data_ss/train_dict_mix_6.pt')
-f, t, Z = stft(dict['data'][0,0], fs=4e7, nperseg=256, boundary=None)
+dict = torch.load('../data_ss/train_200_dict_mix_6.pt')
+f, t, Z = stft(dict['data'][0,0], fs=4e7, nperseg=200, boundary=None)
 plt.figure()
-plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
+plt.imshow(abs(np.roll(Z, 100, axis=0)), aspect='auto', interpolation='None')
+plt.title('One example of 6-component mixture')
 
 #%% 
 """dict have keys ['data'] shape of [n_comb, n_sample, time_len]
@@ -71,20 +76,3 @@ get_Unet_input(xva, lva, yva, which_class=2, tr_va_te='_va_200')
 get_Unet_input(xte, lte, yte, which_class=2, tr_va_te='_te_200', shuffle=False)
 
 
-#%% algorithm
-# "data is x in [Channels, t], cj in [Channels, f, n]"
-# II = np.eye(6)
-
-# # conpute Wiener filter
-# Wj = vj * Rj @ (vjp*Rjp).sum(0)
-# # Estimate spacial source
-# cj = Wj @ x
-# # compute the posterior second-order raw moment
-# Rhcj = chj @ chn.conj().T + vj*(II - Wj) @ Rj
-# # update spacial covariance
-# Rj = 1/N * ( (1/vj) * Rhcj ).sum(-1)  # sum over N
-# # compute unsonstrained source spectrogram
-# zj = 1/I * np.trace(np.inv(Rj) @ Rhcj)
-# # update source spectrogram
-# for i in range(n_class):
-#     v[j] = nets[i](z[j])
