@@ -153,3 +153,17 @@ def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30, shuffle=T
     torch.save(data, class_names[which_class]+tr_va_te+'.pt') 
     print('saved '+class_names[which_class]+tr_va_te)   
 
+
+def awgn(x, snr=20):
+    """
+    This function is adding white guassian noise to the given signal
+    :param x: the given signal with shape of [...,, T], could be complex64
+    :param snr: a float number
+    :return:
+    """
+    x_norm_2 = (abs(x)**2).sum()
+    Esym = x_norm_2/ x.numel()
+    SNR = 10 ** (snr / 10.0)
+    N0 = (Esym / SNR).item()
+    noise = torch.tensor(np.sqrt(N0) * np.random.normal(0, 1, x.shape), device=x.device)
+    return x+noise.to(x.dtype)
