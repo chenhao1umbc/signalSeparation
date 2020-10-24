@@ -12,6 +12,7 @@ from torch import nn
 import torch.nn.functional as Func
 import torch.utils.data as Data
 import matplotlib.pyplot as plt
+from torch.utils.tensorboard import SummaryWriter
 plt.rcParams['figure.dpi'] = 100
 
 from unet.unet_model import UNet
