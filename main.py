@@ -15,6 +15,7 @@ plt.title('One example of 6-component mixture')
 plt.colorbar()
 
 #%% EM with Wiener filtering
+
 n = 0  # which example to test
 s = awgn(sources[:, n], snr=0)  # shape of [n_sources, Time_len]
 _, _, zs = stft(s, fs=4e7, nperseg=200, boundary=None)
@@ -27,6 +28,23 @@ for i in range(n_sources):
 _, _, zm = stft(mix[:,n], fs=4e7, nperseg=200, boundary=None)
 stft_mixture = np.roll(zm, 100, axis=1).reshape(200, 200, 1).astype(np.complex)
 
+for i in range(n_sources):
+    model = UNet(n_channels=1, n_classes=1).cuda()
+    model.load_state_dict(torch.load('./models/'+i+'_unet4.pt'))  # l1+l2
+    model.eval()
+
+    with torch.no_grad():
+        te_cuda = xte.unsqueeze(1).cuda()
+        te_yh = model(te_cuda).cpu().squeeze()
+        torch.cuda.empty_cache()
+
+
+
+
+
+
+
+
 stft_sources, flatten_sources, cov_matrix = \
     norbert.expectation_maximization(stft_sources, stft_mixture, iterations=10)
 
@@ -37,21 +55,5 @@ for i in range(6):
     plt.colorbar()
     plt.title(var_name[i])
 
-#%% EM algorithm
-# "data is x in [Channels, t], cj in [Channels, f, n]"
-# II = np.eye(6)
 
-# # conpute Wiener filter
-# Wj = vj * Rj @ (vjp*Rjp).sum(0)
-# # Estimate spacial source
-# cj = Wj @ x
-# # compute the posterior second-order raw moment
-# Rhcj = chj @ chn.conj().T + vj*(II - Wj) @ Rj
-# # update spacial covariance
-# Rj = 1/N * ( (1/vj) * Rhcj ).sum(-1)  # sum over N
-# # compute unsonstrained source spectrogram
-# zj = 1/I * np.trace(np.inv(Rj) @ Rhcj)
-# # update source spectrogram
-# for i in range(n_class):
-#     v[j] = nets[i](z[j])
 
