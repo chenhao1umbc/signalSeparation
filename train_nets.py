@@ -65,4 +65,32 @@ for epoch in range(opt['n_epochs']):
     print('current epoch is ', epoch)
 
 
-# %%
+# %% test part
+va = torch.load('../data/data_ss/fhss1_va_200.pt')
+a = next(iter(va))
+a[0].shape
+model = UNet(n_channels=1, n_classes=1).cuda()
+model.load_state_dict(torch.load('./models/f1_unet4.pt'))  # l1+l2
+model.eval()
+
+with torch.no_grad():
+    xte, yte, l = a
+
+    te_cuda = xte.unsqueeze(1).cuda()
+    te_yh = model(te_cuda).cpu().squeeze()
+    torch.cuda.empty_cache()
+
+    plt.figure();
+    plt.imshow(xte[1], interpolation='None')
+    plt.colorbar();
+    plt.title('Input')
+
+    plt.figure();
+    plt.imshow(te_yh[1], interpolation='None')
+    plt.colorbar();
+    plt.title('Output')
+
+    plt.figure();
+    plt.imshow(yte[1], interpolation='None')
+    plt.colorbar();
+    plt.title('Ground Truth')
