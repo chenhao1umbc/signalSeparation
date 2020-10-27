@@ -33,7 +33,10 @@ for i in range(n_sources):
     model.load_state_dict(torch.load('./models/'+i+'_unet4.pt'))  # l1+l2
     model.eval()
 
+    va = torch.load('../data/data_ss/fhss1_va_200.pt')
+    a = next(iter(va))
     with torch.no_grad():
+        xte, yte, l = a
         te_cuda = xte.unsqueeze(1).cuda()
         te_yh = model(te_cuda).cpu().squeeze()
         torch.cuda.empty_cache()
