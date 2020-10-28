@@ -4,8 +4,9 @@ from utils import *
 #%% load data
 """sources shape of [n_comb, n_sample, time_len]
     labels shape of [n_comb, n_class=6]"""
+n_sources = 6
 sources, l_s = get_mixdata_label(mix=1, pre='train_200_')
-mix, l_mix = get_mixdata_label(mix=6, pre='train_200_')
+mix, l_mix = get_mixdata_label(mix=n_sources, pre='train_200_')
 
 f, t, Z = stft(mix[0,0], fs=4e7, nperseg=200, boundary=None)
 plt.figure()
@@ -15,42 +16,40 @@ plt.title('One example of 6-component mixture')
 plt.colorbar()
 
 #%% EM with Wiener filtering
+"Mixture for the EM"
+n_comb, n = 0, 0  # which example to test
+_, _, zm = stft(mix[n_comb,n], fs=4e7, nperseg=200, boundary=None)
+stft_mixture = np.roll(zm, 100, axis=0).reshape(200, 200, 1).astype(np.complex)
 
-n = 0  # which example to test
-s = awgn(sources[:, n], snr=0)  # shape of [n_sources, Time_len]
-_, _, zs = stft(s, fs=4e7, nperseg=200, boundary=None)
-temp = np.roll(zs, 100, axis=1)
-n_sources = s.shape[0]
-stft_sources = np.zeros( (200,200, 1, 6)).astype(np.complex)
-for i in range(n_sources):
-    stft_sources[...,0, i] = temp[i]
+#%%
+"Initial estimate"
+# s = awgn(sources[:, n], snr=0)  # shape of [n_sources, Time_len]
+# _, _, zs = stft(s, fs=4e7, nperseg=200, boundary=None)
+# s_stft = np.roll(zs, 100, axis=1)
 
-_, _, zm = stft(mix[:,n], fs=4e7, nperseg=200, boundary=None)
-stft_mixture = np.roll(zm, 100, axis=1).reshape(200, 200, 1).astype(np.complex)
-
+s_stft = torch.rand(6, 200, 200)
+fname = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+xte = torch.tensor(stft_mixture).reshape(1,1,200,200).abs().log().float()
+te_cuda = xte.cuda()
 for i in range(n_sources):
     model = UNet(n_channels=1, n_classes=1).cuda()
-    model.load_state_dict(torch.load('./models/'+i+'_unet4.pt'))  # l1+l2
+    model.load_state_dict(torch.load('../data/data_ss/'+fname[i]+'_unet20.pt'))
     model.eval()
 
-    va = torch.load('../data/data_ss/fhss1_va_200.pt')
-    a = next(iter(va))
     with torch.no_grad():
-        xte, yte, l = a
-        te_cuda = xte.unsqueeze(1).cuda()
-        te_yh = model(te_cuda).cpu().squeeze()
+        s_stft[i] = model(te_cuda).cpu().squeeze()
         torch.cuda.empty_cache()
 
-
-
-
-
-
-
+#%%
+"EM to get each sources"
+stft_sources = np.zeros( (200,200, 1, 6)).astype(np.complex)
+for i in range(n_sources):  # change index order to fit EM
+    stft_sources[...,0, i] = s_stft[i]
 
 stft_sources, flatten_sources, cov_matrix = \
     norbert.expectation_maximization(stft_sources, stft_mixture, iterations=10)
 
+"Visualize the output"
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 for i in range(6):
     plt.figure()
