@@ -46,7 +46,7 @@ print('done')
 # plt.figure()
 # plt.imshow(abs(np.roll(Z, 128, axis=0)), aspect='auto', interpolation='None')
 
-dict = torch.load('../data_ss/train_200_dict_mix_6.pt')
+dict = torch.load('../data/data_ss/train_200_dict_mix_6.pt')
 f, t, Z = stft(dict['data'][0,0], fs=4e7, nperseg=200, boundary=None)
 plt.figure()
 plt.imshow(np.log(abs(np.roll(Z, 100, axis=0))), aspect='auto', interpolation='None')

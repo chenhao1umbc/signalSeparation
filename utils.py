@@ -123,7 +123,7 @@ def get_mixdata_label(mix=1, pre='train_'):
     -------
     [data, label]
     """
-    dict = torch.load('../data_ss/'+pre+'dict_mix_'+str(mix)+'.pt')
+    dict = torch.load('../data/data_ss/'+pre+'dict_mix_'+str(mix)+'.pt')
     label = get_label(dict['label'], dict['data'].shape[:2])
     return dict['data'], label
 
