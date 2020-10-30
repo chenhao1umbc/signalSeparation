@@ -44,7 +44,7 @@ for i in range(n_sources):  # change index order to fit EM
     stft_sources[...,0, i] = s_stft[i].exp().numpy()
 
 stft_sources, flatten_sources, cov_matrix = \
-    norbert.expectation_maximization(stft_sources, stft_mixture, iterations=3)
+    norbert.expectation_maximization(stft_sources, stft_mixture, iterations=10)
 s_hat = stft_sources.squeeze()
 
 gt = sources[:, n]  # ground truth
@@ -53,27 +53,28 @@ for i in range(6):
     _, sh[i] = istft(np.roll(s_hat[...,i], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
 
 #%% EM from Norbert for only 1 Channel, 1 sample
-n_iter = 3  # how many iterations for EM
+n_iter = 10 # how many iterations for EM
 n_s, n_f, n_t = s_stft.shape # number of sources, freq. bins, time bins
 n_c = 1 # number of channels
 cjh = s_stft.clone().to(torch.complex128).exp()
 x = torch.tensor(stft_mixture)
+eps = np.finfo(np.complex128).eps
 
 for i in range(n_iter):
     vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
     Rcj = cjh*cjh.conj()  # shape of [n_s, n_f, n_t]
-    Rj =  (Rcj/vj).sum(2)/n_t  # shape of [n_s, n_f]
+    Rj =  (Rcj/(vj+eps)).sum(2)/n_t  # shape of [n_s, n_f]
     
     "Compute mixture covariance"
     Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
     "Calc. Wiener Filter"
-    Wj = vj*Rj[..., None] / Rx # shape of [n_s, n_f, n_t]
+    Wj = vj*Rj[..., None] / (Rx+eps) # shape of [n_s, n_f, n_t]
     "get STFT estimation"
     cjh = Wj * x.squeeze()
 
 s = 0.0
 for i in range(6):
-    s += (stft_sources[...,0,0] -cjh[0].numpy()).sum()
+    s += abs(stft_sources[...,0,0] -cjh[0].numpy()).sum()
 print(s)
 
 # %%
