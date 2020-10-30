@@ -169,3 +169,25 @@ def awgn(x, snr=20):
     N0 = (Esym / SNR).item()
     noise = torch.tensor(np.sqrt(N0) * np.random.normal(0, 1, x.shape), device=x.device)
     return x+noise.to(x.dtype)
+
+
+# def em_simple(init_stft, stft_mix, n_iter):
+#     # EM from Norbert for only 1 Channel, 1 sample
+#     n_s, n_f, n_t = init_stft.shape # number of sources, freq. bins, time bins
+#     n_c = 1 # number of channels
+#     cjh = init_stft.clone().to(torch.complex64).exp()
+#     x = torch.tensor(stft_mix)
+#     eps = np.finfo(np.complex64).eps
+
+#     for i in range(n_iter):
+#         vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
+#         Rcj = cjh*cjh.conj()  # shape of [n_s, n_f, n_t]
+#         Rj =  (Rcj/(vj+eps)).sum(2)/n_t  # shape of [n_s, n_f]
+        
+#         "Compute mixture covariance"
+#         Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
+#         "Calc. Wiener Filter"
+#         Wj = vj*Rj[..., None] / (Rx+eps) # shape of [n_s, n_f, n_t]
+#         "get STFT estimation"
+#         cjh = Wj * x.squeeze()
+#     return cjh

@@ -1,3 +1,5 @@
+# %%
+a = torch.ran(2,3) +1j*torch.rand(2,3)
 #%%
 from utils import *
 
@@ -56,9 +58,9 @@ for i in range(6):
 n_iter = 10 # how many iterations for EM
 n_s, n_f, n_t = s_stft.shape # number of sources, freq. bins, time bins
 n_c = 1 # number of channels
-cjh = s_stft.clone().to(torch.complex128).exp()
+cjh = s_stft.clone().to(torch.complex64).exp()
 x = torch.tensor(stft_mixture)
-eps = np.finfo(np.complex128).eps
+eps = np.finfo(np.complex64).eps
 
 for i in range(n_iter):
     vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
@@ -72,10 +74,6 @@ for i in range(n_iter):
     "get STFT estimation"
     cjh = Wj * x.squeeze()
 
-s = 0.0
-for i in range(6):
-    s += abs(stft_sources[...,0,0] -cjh[0].numpy()).sum()
-print(s)
 
 # %%
 "Visualize the output"
