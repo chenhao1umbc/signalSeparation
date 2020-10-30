@@ -1,5 +1,4 @@
 #%%
-from matplotlib.pyplot import legend
 from utils import *
 
 #%% load data
@@ -53,6 +52,29 @@ sh = np.zeros(gt.shape).astype(np.complex)
 for i in range(6):
     _, sh[i] = istft(np.roll(s_hat[...,i], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
 
+#%% EM from Norbert for only 1 Channel, 1 sample
+n_iter = 3  # how many iterations for EM
+n_s, n_f, n_t = s_stft.shape # number of sources, freq. bins, time bins
+n_c = 1 # number of channels
+cjh = s_stft.clone().to(torch.complex128).exp()
+x = torch.tensor(stft_mixture)
+
+for i in range(n_iter):
+    vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
+    Rcj = cjh*cjh.conj()  # shape of [n_s, n_f, n_t]
+    Rj =  (Rcj/vj).sum(2)/n_t  # shape of [n_s, n_f]
+    
+    "Compute mixture covariance"
+    Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
+    "Calc. Wiener Filter"
+    Wj = vj*Rj[..., None] / Rx # shape of [n_s, n_f, n_t]
+    "get STFT estimation"
+    cjh = Wj * x.squeeze()
+
+s = 0.0
+for i in range(6):
+    s += (stft_sources[...,0,0] -cjh[0].numpy()).sum()
+print(s)
 
 # %%
 "Visualize the output"
@@ -68,4 +90,5 @@ for i in range(6):
     plt.plot(abs(sh[i][10:20000]))
     plt.plot(abs(gt[i][10:20000])+0.1)
     plt.legend(['Seperated', 'Groudtruth'])
-# %%
+
+
