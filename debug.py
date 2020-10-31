@@ -47,7 +47,7 @@ for i in range(6):
 n_iter = 10
 mse = []
 for i in range(1, n_iter):
-    cjh, a = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=i, gt_stft=gt_stft )  # instead of import Norbert
+    cjh = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=i)  # instead of import Norbert
     mse.append((((cjh-gt_stft).abs()**2).sum()**0.5).item())
 
 # %%
