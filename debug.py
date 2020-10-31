@@ -44,7 +44,7 @@ for i in range(6):
     _, _, zm = stft(sources[i, n], fs=4e7, nperseg=200, boundary=None)
     gt_stft[i] = torch.tensor(np.roll(zm, 100, axis=0))
 
-n_iter = 10
+n_iter = 20
 mse = []
 for i in range(1, n_iter):
     cjh = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=i)  # instead of import Norbert
@@ -61,5 +61,4 @@ for i in range(6):
 
 # %%
 plt.plot(mse)
-plt.plot(a)
 # %%
