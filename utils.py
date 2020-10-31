@@ -192,4 +192,4 @@ def em_simple(init_stft, stft_mix, n_iter):
         "get STFT estimation"
         cjh = Wj * x
 
-    return cjh, mse
+    return cjh
