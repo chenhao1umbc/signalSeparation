@@ -39,15 +39,7 @@ for i in range(6):
 
 #%%
 "EM to get each sources"
-stft_sources = np.zeros( (200,200, 1, 6)).astype(np.complex)
-for i in range(n_sources):  # change index order to fit EM
-    stft_sources[...,0, i] = s_stft[i].exp().numpy()
-
-stft_sources, flatten_sources, cov_matrix = \
-    norbert.expectation_maximization(stft_sources, stft_mixture, iterations=10)
-s_hat = stft_sources.squeeze()
-
-cjh = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=10)
+cjh = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=10)  # instead of import Norbert
 
 # gt = sources[:, n]  # ground truth
 # sh = np.zeros(gt.shape).astype(np.complex)

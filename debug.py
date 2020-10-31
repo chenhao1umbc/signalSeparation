@@ -17,6 +17,49 @@ plt.imshow(np.log(abs(np.roll(zm, 100, axis=0))+1e-20), \
     vmax=-3, vmin=-11, aspect='auto', interpolation='None')
 plt.title('One example of 6-component mixture')
 plt.colorbar()
-   
 
+#%%
+"Initial estimate"
+# s = awgn(sources[:, n], snr=0)  # shape of [n_sources, Time_len]
+# _, _, zs = stft(s, fs=4e7, nperseg=200, boundary=None)
+# s_stft = np.roll(zs, 100, axis=1)
+
+s_stft = torch.zeros(6, 200, 200)
+fname = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+xte = torch.tensor(stft_mixture).reshape(1,1,200,200).abs().log().float()
+te_cuda = xte.cuda()
+for i in range(6):
+    model = UNet(n_channels=1, n_classes=1).cuda()
+    model.load_state_dict(torch.load('../data/data_ss/'+fname[i]+'_unet20.pt'))
+    model.eval()
+
+    with torch.no_grad():
+        s_stft[i] = model(te_cuda).cpu().squeeze()
+        torch.cuda.empty_cache()
+
+#%%
+"EM to get each sources"
+gt_stft = torch.rand(6, 200, 200, dtype=torch.complex64)
+for i in range(6):
+    _, _, zm = stft(sources[i, n], fs=4e7, nperseg=200, boundary=None)
+    gt_stft[i] = torch.tensor(np.roll(zm, 100, axis=0))
+
+n_iter = 10
+mse = []
+for i in range(1, n_iter):
+    cjh, a = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=i, gt_stft=gt_stft )  # instead of import Norbert
+    mse.append((((cjh-gt_stft).abs()**2).sum()**0.5).item())
+
+# %%
+"Visualize the output"
+var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+for i in range(6):
+    plt.figure()
+    plt.imshow(np.log(abs(cjh[i])+1e-20), vmax=-3, vmin=-11)
+    plt.colorbar()
+    plt.title(var_name[i])
+
+# %%
+plt.plot(mse)
+plt.plot(a)
 # %%

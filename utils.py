@@ -171,7 +171,7 @@ def awgn(x, snr=20):
     return x+noise.to(x.dtype)
 
 
-def em_simple(init_stft, stft_mix, n_iter):
+def em_simple(init_stft, stft_mix, n_iter, gt_stft=0):
     # EM from Norbert for only 1 Channel, 1 sample
     n_s, n_f, n_t = init_stft.shape # number of sources, freq. bins, time bins
     n_c = 1 # number of channels
@@ -180,6 +180,7 @@ def em_simple(init_stft, stft_mix, n_iter):
     eps = 1e-20
     # Rj =  (Rcj/(vj+eps)).sum(2)/n_t  # shape of [n_s, n_f]
     Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
+    mse = []
 
     for i in range(n_iter):
         vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
@@ -191,5 +192,6 @@ def em_simple(init_stft, stft_mix, n_iter):
         Wj = vj*Rj[..., None] / (Rx+eps) # shape of [n_s, n_f, n_t]
         "get STFT estimation"
         cjh = Wj * x
-    
-    return cjh
+        mse.append((((cjh-gt_stft).abs()**2).sum()**0.5).item())
+
+    return cjh, mse
