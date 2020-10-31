@@ -10,7 +10,7 @@ mix, l_mix = get_mixdata_label(mix=n_sources, pre='train_200_')
 
 "Mixture for the EM"
 n_comb, n = 0, 0  # which example to test
-_, _, zm = stft(mix[n_comb,n], fs=4e7, nperseg=200, boundary=None)
+
 stft_mixture = np.roll(zm, 100, axis=0).reshape(200, 200, 1).astype(np.complex)
 plt.figure()
 plt.imshow(np.log(abs(np.roll(zm, 100, axis=0))+1e-20), \
@@ -61,4 +61,16 @@ for i in range(6):
 
 # %%
 plt.plot(mse)
+
+# %%
+gt = sources[:, n]  # ground truth
+_, ss = istft(np.roll(cjh[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
+_, sss = istft(np.roll(gt_stft[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
+# %%
+a = np.random.rand(20100) +1j*np.random.rand(20100)
+_, _, A = stft(a, fs=4e7, nperseg=200, boundary=None)
+_, aa = istft(A, fs=4e7, nperseg=200, input_onesided=False, boundary=None )
+plt.plot(aa.imag[:500]+1)
+plt.plot(a.imag[:500])
+
 # %%

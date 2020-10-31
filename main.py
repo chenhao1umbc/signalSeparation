@@ -41,10 +41,10 @@ for i in range(6):
 "EM to get each sources"
 cjh = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=10)  # instead of import Norbert
 
-# gt = sources[:, n]  # ground truth
-# sh = np.zeros(gt.shape).astype(np.complex)
-# for i in range(6):
-#     _, sh[i] = istft(np.roll(s_hat[...,i], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
+gt = sources[:, n]  # ground truth
+sh = np.zeros(gt.shape).astype(np.complex)
+for i in range(6):
+    _, sh[i] = istft(np.roll(cjh[i], 100, axis=0), fs=4e7, nperseg=200, input_onesided=False,  boundary=None)
 
 
 # %%
@@ -56,11 +56,11 @@ for i in range(6):
     plt.colorbar()
     plt.title(var_name[i])
 
-# for i in range(6):
-#     plt.figure()
-#     plt.plot(abs(sh[i][10:20000]))
-#     plt.plot(abs(gt[i][10:20000])+0.1)
-#     plt.legend(['Seperated', 'Groudtruth'])
+for i in range(6):
+    plt.figure()
+    plt.plot(sh[i][10:20000].imag)
+    plt.plot(gt[i][10:20000].imag+0.1)
+    plt.legend(['Seperated', 'Groudtruth'])
 
 
 
