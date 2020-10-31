@@ -1,5 +1,3 @@
-# %%
-a = torch.ran(2,3) +1j*torch.rand(2,3)
 #%%
 from utils import *
 
@@ -49,30 +47,12 @@ stft_sources, flatten_sources, cov_matrix = \
     norbert.expectation_maximization(stft_sources, stft_mixture, iterations=10)
 s_hat = stft_sources.squeeze()
 
-gt = sources[:, n]  # ground truth
-sh = np.zeros(gt.shape).astype(np.complex)
-for i in range(6):
-    _, sh[i] = istft(np.roll(s_hat[...,i], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
+cjh = em_simple(init_stft=s_stft, stft_mix=stft_mixture, n_iter=10)
 
-#%% EM from Norbert for only 1 Channel, 1 sample
-n_iter = 10 # how many iterations for EM
-n_s, n_f, n_t = s_stft.shape # number of sources, freq. bins, time bins
-n_c = 1 # number of channels
-cjh = s_stft.clone().to(torch.complex64).exp()
-x = torch.tensor(stft_mixture)
-eps = np.finfo(np.complex64).eps
-
-for i in range(n_iter):
-    vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
-    Rcj = cjh*cjh.conj()  # shape of [n_s, n_f, n_t]
-    Rj =  (Rcj/(vj+eps)).sum(2)/n_t  # shape of [n_s, n_f]
-    
-    "Compute mixture covariance"
-    Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
-    "Calc. Wiener Filter"
-    Wj = vj*Rj[..., None] / (Rx+eps) # shape of [n_s, n_f, n_t]
-    "get STFT estimation"
-    cjh = Wj * x.squeeze()
+# gt = sources[:, n]  # ground truth
+# sh = np.zeros(gt.shape).astype(np.complex)
+# for i in range(6):
+#     _, sh[i] = istft(np.roll(s_hat[...,i], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
 
 
 # %%
@@ -80,14 +60,16 @@ for i in range(n_iter):
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 for i in range(6):
     plt.figure()
-    plt.imshow(np.log(abs(stft_sources[..., i])+1e-20), vmax=-3, vmin=-11)
+    plt.imshow(np.log(abs(cjh[i])+1e-20), vmax=-3, vmin=-11)
     plt.colorbar()
     plt.title(var_name[i])
 
-for i in range(6):
-    plt.figure()
-    plt.plot(abs(sh[i][10:20000]))
-    plt.plot(abs(gt[i][10:20000])+0.1)
-    plt.legend(['Seperated', 'Groudtruth'])
+# for i in range(6):
+#     plt.figure()
+#     plt.plot(abs(sh[i][10:20000]))
+#     plt.plot(abs(gt[i][10:20000])+0.1)
+#     plt.legend(['Seperated', 'Groudtruth'])
 
 
+
+# %%
