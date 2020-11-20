@@ -10,7 +10,7 @@ mix, l_mix = get_mixdata_label(mix=n_sources, pre='train_200_')
 
 "Mixture for the EM"
 n_comb, n = 0, 0  # which example to test
-
+_, _, zm = stft(mix[n_comb,n], fs=4e7, nperseg=200, boundary=None)
 stft_mixture = np.roll(zm, 100, axis=0).reshape(200, 200, 1).astype(np.complex)
 plt.figure()
 plt.imshow(np.log(abs(np.roll(zm, 100, axis=0))+1e-20), \
@@ -60,7 +60,7 @@ for i in range(6):
     plt.title(var_name[i])
 
 # %%
-plt.plot(mse)
+plt.plot(mse, '-x')
 
 # %%
 gt = sources[:, n]  # ground truth
@@ -73,4 +73,48 @@ _, aa = istft(A, fs=4e7, nperseg=200, input_onesided=False, boundary=None )
 plt.plot(aa.imag[:500]+1)
 plt.plot(a.imag[:500])
 
+
+# %% Test data with power difference without EM
+"""sources shape of [n_comb, n_sample, time_len]
+    labels shape of [n_comb, n_class=6]"""
+n_sources = 6
+sources, l_s = get_mixdata_label(mix=1, pre='train_200_')
+mix, l_mix = get_mixdata_label(mix=n_sources, pre='train_200_')
+
+"Mixture for the EM"
+n_comb, n = 0, 0  # which example to test
+# x = mix[n_comb,n]
+db = 10  # db in [0, 20]
+power_ratio = 10**(-1*db/20)
+x = sources[1, n]*power_ratio + sources[2, n] + sources[3, n]
+
+_, _, zm = stft(x, fs=4e7, nperseg=200, boundary=None)
+stft_mixture = np.roll(zm, 100, axis=0).reshape(200, 200, 1).astype(np.complex)
+plt.figure()
+plt.imshow(np.log(abs(np.roll(zm, 100, axis=0))+1e-20), \
+    vmax=-3, vmin=-11, aspect='auto', interpolation='None')
+plt.title('Input mixture')
+plt.colorbar()
+
+s_stft = torch.zeros(6, 200, 200)
+fname = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+xte = torch.tensor(stft_mixture).reshape(1,1,200,200).abs().log().float()
+te_cuda = xte.cuda()
+for i in range(6):
+    model = UNet(n_channels=1, n_classes=1).cuda()
+    model.load_state_dict(torch.load('../data/data_ss/'+fname[i]+'_unet20.pt'))
+    model.eval()
+
+    with torch.no_grad():
+        s_stft[i] = model(te_cuda).cpu().squeeze()
+        torch.cuda.empty_cache()
+
+for i in range(6):
+    plt.figure()
+    plt.imshow(s_stft[i], vmax=-3, vmin=-11, aspect='auto', interpolation='None')
+    plt.title(fname[i])
+    plt.colorbar()
+
 # %%
+
+
