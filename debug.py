@@ -37,45 +37,6 @@ for i in range(6):
         s_stft[i] = model(te_cuda).cpu().squeeze()
         torch.cuda.empty_cache()
 
-#%%
-"EM to get each sources"
-gt_stft = torch.rand(6, 200, 200, dtype=torch.complex64)
-for i in range(6):
-    _, _, zm = stft(sources[i, n], fs=4e7, nperseg=200, boundary=None)
-    gt_stft[i] = torch.tensor(np.roll(zm, 100, axis=0))
-
-n_iter = 30
-mse = []
-init = s_stft #  gt_stft.abs().log()
-for i in range(1, n_iter):
-    cjh = em_simple(init_stft=init, stft_mix=stft_mixture, n_iter=i)  # instead of import Norbert
-    mse.append((((cjh - gt_stft).abs()**2).sum()**0.5).item())
-
-plt.plot(mse, '-x')
-
-# %%
-"Visualize the output"
-var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
-for i in range(6):
-    plt.figure()
-    plt.imshow(np.log(abs(cjh[i])+1e-20), vmax=-3, vmin=-11)
-    plt.colorbar()
-    plt.title(var_name[i])
-
-
-# %%
-gt = sources[:, n]  # ground truth
-_, ss = istft(np.roll(cjh[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
-_, sss = istft(np.roll(gt_stft[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
-
-# %%
-a = np.random.rand(20100) +1j*np.random.rand(20100)
-_, _, A = stft(a, fs=4e7, nperseg=200, boundary=None)
-_, aa = istft(A, fs=4e7, nperseg=200, input_onesided=False, boundary=None )
-plt.plot(aa.imag[:500]+1)
-plt.plot(a.imag[:500])
-
-
 # %% Test data with power difference without EM
 """sources shape of [n_comb, n_sample, time_len]
     labels shape of [n_comb, n_class=6]"""
@@ -118,4 +79,58 @@ for i in range(6):
     plt.colorbar()
 
 
+#%%
+
+# "EM to get each sources"
+# gt_stft = torch.rand(6, 200, 200, dtype=torch.complex64)
+# for i in range(6):
+#     _, _, zm = stft(sources[i, n], fs=4e7, nperseg=200, boundary=None)
+#     gt_stft[i] = torch.tensor(np.roll(zm, 100, axis=0))
+
+# n_iter = 30
+# mse = []
+# init = s_stft #  gt_stft.abs().log()
+# for i in range(1, n_iter):
+#     cjh = em_simple(init_stft=init, stft_mix=stft_mixture, n_iter=i)  # instead of import Norbert
+#     mse.append((((cjh - gt_stft).abs()**2).sum()**0.5).item())
+
+# plt.plot(mse, '-x')
+
+
+"EM to get each sources"
+gt_stft = torch.rand(6, 200, 200, dtype=torch.complex64)
+for i in range(6):
+    _, _, zm = stft(sources[i, n], fs=4e7, nperseg=200, boundary=None)
+    gt_stft[i] = torch.tensor(np.roll(zm, 100, axis=0))
+
+n_iter = 30
+mse = []
+init = s_stft #  gt_stft.abs().log()
+for i in range(1, n_iter):
+    cjh = em_10paper(init_stft=init, stft_mix=stft_mixture, n_iter=i)  # instead of import Norbert
+    mse.append((((cjh - gt_stft).abs()**2).sum()**0.5).item())
+plt.figure()
+plt.plot(mse, '-x')
+
+
 # %%
+"Visualize the output"
+var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+for i in range(6):
+    plt.figure()
+    plt.imshow(np.log(abs(cjh[i])+1e-20), vmax=-3, vmin=-11)
+    plt.colorbar()
+    plt.title(var_name[i])
+
+
+# %%
+gt = sources[:, n]  # ground truth
+_, ss = istft(np.roll(cjh[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
+_, sss = istft(np.roll(gt_stft[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
+
+# %%
+a = np.random.rand(20100) +1j*np.random.rand(20100)
+_, _, A = stft(a, fs=4e7, nperseg=200, boundary=None)
+_, aa = istft(A, fs=4e7, nperseg=200, input_onesided=False, boundary=None )
+plt.plot(aa.imag[:500]+1)
+plt.plot(a.imag[:500])

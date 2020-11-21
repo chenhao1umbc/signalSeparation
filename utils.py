@@ -241,23 +241,22 @@ def em_10paper(init_stft, stft_mix, n_iter):
     eps = 1e-20
     "Initialize spatial covariance matrix"
     Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
+    Rcjh = Rj[..., None] * cjh.abs()**2
 
     for i in range(n_iter):
         "Get spectrogram- power spectram"
         vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
         "cal spatial covariance matrix"
-        Rj = cjh@cjh.conj().reshape(n_s, n_t, n_f)/vj.sum(2).unsqueeze(-1)
-        
+        Rj = 1/n_t* (Rcjh/vj).sum(-1)
         "Compute mixture covariance"
         Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
 
-
-        Rcj = vj*Rj[..., None]
+        Rcj = vj * Rj[..., None] # shape of [n_s, n_f, n_t]
         "Calc. Wiener Filter"
         Wj = Rcj / (Rx+eps) # shape of [n_s, n_f, n_t]
         "get STFT estimation, the conditional mean"
         cjh = Wj * x  # shape of [n_s, n_f, n_t]
         "get covariance"
-        Rcjh = cjh*cjh.conj() + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
-
+        Rcjh = cjh.abs()**2 + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
+        print(Rcj)
     return cjh
