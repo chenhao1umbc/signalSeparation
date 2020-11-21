@@ -51,17 +51,17 @@ def label_gen(n):
 def mix_data_torch(x, labels):
     """This functin will mix the data according the to labels
 
-    Parameters
-    ----------
-    x : [tensor of complex]
-        [data with shape of [n_classes, n_samples, time_len]]
-    labels : [matrix of int]
-        [maxtrix of [n_samples, n_classes]]
+        Parameters
+        ----------
+        x : [tensor of complex]
+            [data with shape of [n_classes, n_samples, time_len]]
+        labels : [matrix of int]
+            [maxtrix of [n_samples, n_classes]]
 
-    Returns
-    -------
-    [complex pytorch]
-        [mixture data with shape of [n_samples, time_len] ]
+        Returns
+        -------
+        [complex pytorch]
+            [mixture data with shape of [n_samples, time_len] ]
     """
     n = labels.shape[0]
     output = np.zeros( (n, x.shape[1], x.shape[2]) ).astype('complex64')
@@ -95,17 +95,17 @@ def save_mix(x, lb1, lb2, lb3, lb4, lb5, lb6, pre='_'):
 def get_label(lb, shape):
     """repeat the labels for the shape of mixture data
 
-    Parameters
-    ----------
-    lb : [torch.float matrix]
-        [matrix of labels]
-    shape : [tuple int]
-        [data shape]]
+        Parameters
+        ----------
+        lb : [torch.float matrix]
+            [matrix of labels]
+        shape : [tuple int]
+            [data shape]]
 
-    Returns
-    -------
-    [labels]
-        [large matrix]
+        Returns
+        -------
+        [labels]
+            [large matrix]
     """
     n_comb, n_sample = shape
     label = np.repeat(lb, n_sample, axis=0).reshape(n_comb, n_sample, 6 )
@@ -115,14 +115,14 @@ def get_label(lb, shape):
 def get_mixdata_label(mix=1, pre='train_'):
     """loading mixture data and prepare labels
 
-    Parameters
-    ----------
-    mix : int, optional
-        [how many components in the mixture], by default 1
+        Parameters
+        ----------
+        mix : int, optional
+            [how many components in the mixture], by default 1
 
-    Returns
-    -------
-    [data, label]
+        Returns
+        -------
+        [data, label]
     """
     dict = torch.load('../data/data_ss/'+pre+'dict_mix_'+str(mix)+'.pt')
     label = get_label(dict['label'], dict['data'].shape[:2])
@@ -158,10 +158,10 @@ def get_Unet_input(x, l, y, which_class=0, tr_va_te='_tr', n_batch=30, shuffle=T
 
 def awgn(x, snr=20):
     """
-    This function is adding white guassian noise to the given signal
-    :param x: the given signal with shape of [...,, T], could be complex64
-    :param snr: a float number
-    :return:
+        This function is adding white guassian noise to the given signal
+        :param x: the given signal with shape of [...,, T], could be complex64
+        :param snr: a float number
+        :return:
     """
     x_norm_2 = (abs(x)**2).sum()
     Esym = x_norm_2/ x.numel()
@@ -172,6 +172,23 @@ def awgn(x, snr=20):
 
 
 def em_simple(init_stft, stft_mix, n_iter):
+    """This function is exactly as the norber.expectation_maximization() but only
+        works for 1 channel, using pytorch
+
+        Parameters
+        ----------
+        init_stft : [real tensor]
+            [shape of [n_source, f, t]]
+        stft_mix : [complex tensor]
+            [shape of [n_source, 1, f, t]]
+        n_iter : [int]
+            [how many iterations for EM]
+
+        Returns
+        -------
+        [complex tensor]
+            [shape of [n_source, f, t]]
+    """
     # EM from Norbert for only 1 Channel, 1 sample
     n_s, n_f, n_t = init_stft.shape # number of sources, freq. bins, time bins
     n_c = 1 # number of channels
@@ -192,5 +209,55 @@ def em_simple(init_stft, stft_mix, n_iter):
         Wj = vj*Rj[..., None] / (Rx+eps) # shape of [n_s, n_f, n_t]
         "get STFT estimation"
         cjh = Wj * x  # shape of [n_s, n_f, n_t]
+
+    return cjh
+
+
+def em_10paper(init_stft, stft_mix, n_iter):
+    """This function is implemented using 2010's paper, for 1 channel with pytorch
+
+        Parameters
+        ----------
+        init_stft : [real tensor]
+            [shape of [n_source, f, t]]
+
+        stft_mix : [complex tensor]
+            [shape of [n_source, 1, f, t]]
+            
+        n_iter : [int]
+            [how many iterations for EM]
+
+        Returns
+        -------
+        [complex tensor]
+            [shape of [n_source, f, t]]
+    """
+
+    # EM from Norbert for only 1 Channel, 1 sample
+    n_s, n_f, n_t = init_stft.shape # number of sources, freq. bins, time bins
+    n_c = 1 # number of channels
+    cjh = init_stft.clone().to(torch.complex64).exp()
+    x = torch.tensor(stft_mix).squeeze()
+    eps = 1e-20
+    "Initialize spatial covariance matrix"
+    Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
+
+    for i in range(n_iter):
+        "Get spectrogram- power spectram"
+        vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
+        "cal spatial covariance matrix"
+        Rj = cjh@cjh.conj().reshape(n_s, n_t, n_f)/vj.sum(2).unsqueeze(-1)
+        
+        "Compute mixture covariance"
+        Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
+
+
+        Rcj = vj*Rj[..., None]
+        "Calc. Wiener Filter"
+        Wj = Rcj / (Rx+eps) # shape of [n_s, n_f, n_t]
+        "get STFT estimation, the conditional mean"
+        cjh = Wj * x  # shape of [n_s, n_f, n_t]
+        "get covariance"
+        Rcjh = cjh*cjh.conj() + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
 
     return cjh
