@@ -184,12 +184,13 @@ def em_simple(init_stft, stft_mix, n_iter):
     for i in range(n_iter):
         vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
         # Rcj = cjh*cjh.conj()  # shape of [n_s, n_f, n_t]
+        # Rj = cjh@cjh.conj().reshape(n_s, n_t, n_f)/vj.sum(2).unsqueeze(-1)
         
         "Compute mixture covariance"
         Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
         "Calc. Wiener Filter"
         Wj = vj*Rj[..., None] / (Rx+eps) # shape of [n_s, n_f, n_t]
         "get STFT estimation"
-        cjh = Wj * x
+        cjh = Wj * x  # shape of [n_s, n_f, n_t]
 
     return cjh
