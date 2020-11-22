@@ -80,21 +80,53 @@ for i in range(6):
 
 
 #%%
+def em_10paper(init_stft, stft_mix, n_iter):
+    """This function is implemented using 2010's paper, for 1 channel with pytorch
 
-# "EM to get each sources"
-# gt_stft = torch.rand(6, 200, 200, dtype=torch.complex64)
-# for i in range(6):
-#     _, _, zm = stft(sources[i, n], fs=4e7, nperseg=200, boundary=None)
-#     gt_stft[i] = torch.tensor(np.roll(zm, 100, axis=0))
+        Parameters
+        ----------
+        init_stft : [real tensor]
+            [shape of [n_source, f, t]]
 
-# n_iter = 30
-# mse = []
-# init = s_stft #  gt_stft.abs().log()
-# for i in range(1, n_iter):
-#     cjh = em_simple(init_stft=init, stft_mix=stft_mixture, n_iter=i)  # instead of import Norbert
-#     mse.append((((cjh - gt_stft).abs()**2).sum()**0.5).item())
+        stft_mix : [complex tensor]
+            [shape of [n_source, 1, f, t]]
+            
+        n_iter : [int]
+            [how many iterations for EM]
 
-# plt.plot(mse, '-x')
+        Returns
+        -------
+        [complex tensor]
+            [shape of [n_source, f, t]]
+    """
+
+    # EM from Norbert for only 1 Channel, 1 sample
+    n_s, n_f, n_t = init_stft.shape # number of sources, freq. bins, time bins
+    n_c = 1 # number of channels
+    cjh = init_stft.clone().to(torch.complex64).exp()
+    x = torch.tensor(stft_mix).squeeze()
+    eps = 1e-28
+    "Initialize spatial covariance matrix"
+    Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
+    Rcjh = Rj[..., None] * cjh.abs()**2
+
+    for i in range(n_iter):
+        "Get spectrogram- power spectram"
+        vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
+        "cal spatial covariance matrix"
+        Rj = 1/n_t* (Rcjh/(vj+eps)).sum(-1) # shape of [n_s, n_f]
+        "Compute mixture covariance"
+        Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
+
+        Rcj = vj * Rj[..., None] # shape of [n_s, n_f, n_t]
+        "Calc. Wiener Filter"
+        Wj = Rcj / (Rx+eps) # shape of [n_s, n_f, n_t]
+        "get STFT estimation, the conditional mean"
+        cjh = Wj * x  # shape of [n_s, n_f, n_t]
+        "get covariance"
+        Rcjh = cjh.abs()**2 + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
+        print(Rcj)
+    return cjh
 
 
 "EM to get each sources"
