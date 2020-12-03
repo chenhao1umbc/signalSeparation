@@ -213,3 +213,102 @@ def em_simple(init_stft, stft_mix, n_iter):
     return cjh
 
 
+def em_10paper(init_stft, stft_mix, n_iter):
+    """This function is implemented using 2010's paper, for 1 channel with pytorch
+
+        Parameters
+        ----------
+        init_stft : [real tensor]
+            [shape of [n_source, f, t]]
+
+        stft_mix : [complex tensor]
+            [shape of [n_source, 1, f, t]]
+            
+        n_iter : [int]
+            [how many iterations for EM]
+
+        Returns
+        -------
+        [complex tensor]
+            [shape of [n_source, f, t]]
+    """
+
+    # EM from Norbert for only 1 Channel, 1 sample
+    n_s, n_f, n_t = init_stft.shape # number of sources, freq. bins, time bins
+    n_c = 1 # number of channels
+    cjh = init_stft.clone().to(torch.complex64).exp()
+    x = torch.tensor(stft_mix).squeeze()
+    eps = 1e-28
+    "Initialize spatial covariance matrix"
+    Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
+    Rcjh = Rj[..., None] * cjh.abs()**2
+
+    for i in range(n_iter):
+        "Get spectrogram- power spectram"
+        vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
+        "cal spatial covariance matrix"
+        Rj = 1/n_t* (Rcjh/(vj+eps)).sum(-1) # shape of [n_s, n_f]
+        "Compute mixture covariance"
+        Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
+
+        Rcj = vj * Rj[..., None] # shape of [n_s, n_f, n_t]
+        "Calc. Wiener Filter"
+        Wj = Rcj / (Rx+eps) # shape of [n_s, n_f, n_t]
+        "get STFT estimation, the conditional mean"
+        cjh = Wj * x  # shape of [n_s, n_f, n_t]
+        "get covariance"
+        Rcjh = cjh.abs()**2 + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
+        # print(Rcj)
+    return cjh
+
+
+def st_ft(x):
+    """This is customized stft with np.roll and certain sampling freq.
+
+    Parameters
+    ----------
+    x : [np.complex or torch.complex64]
+        [time series, shape of 20100]
+
+    Returns
+    -------
+    [np.complex]
+        [STFT with shift, shape of 200*200]
+    """
+    _, _, zm = stft(x, fs=4e7, nperseg=200, boundary=None)
+    output = np.roll(zm, 100, axis=0).astype(np.complex)
+    return output
+
+
+def plot_x(x, title='Input mixture'):
+    """plot stft of x
+
+    Parameters
+    ----------
+    x : [np.complex or torch.complex64]
+        [time series, shape of 20100]
+    """
+    if x.shape[-1] == 200:
+        y = x
+    else:
+        y = st_ft(x)
+
+    plt.figure()
+    plt.imshow(np.log(abs(y)+1e-30), vmax=-3, vmin=-11,\
+         aspect='auto', interpolation='None')
+    plt.title(title)
+    plt.colorbar()
+
+
+def plot_log_stft(stft_mix, title="STFT"):
+    """plot stft, if stft is out put
+
+    Parameters
+    ----------
+    x : [np.complex or torch.float32]
+        [shape of 200*200]
+    """
+    plt.figure()
+    plt.imshow(stft_mix, vmax=-3, vmin=-11, aspect='auto', interpolation='None')
+    plt.title(title)
+    plt.colorbar()
