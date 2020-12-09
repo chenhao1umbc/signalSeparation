@@ -194,7 +194,7 @@ def em_simple(init_stft, stft_mix, n_iter):
     n_c = 1 # number of channels
     cjh = init_stft.clone().to(torch.complex64).exp()
     x = torch.tensor(stft_mix).squeeze()
-    eps = 1e-20
+    eps = 1e-28
     # Rj =  (Rcj/(vj+eps)).sum(2)/n_t  # shape of [n_s, n_f]
     Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
 
@@ -236,7 +236,7 @@ def em_10paper(init_stft, stft_mix, n_iter):
     # EM from Norbert for only 1 Channel, 1 sample
     n_s, n_f, n_t = init_stft.shape # number of sources, freq. bins, time bins
     n_c = 1 # number of channels
-    cjh = init_stft.clone().to(torch.complex64).exp()
+    cjh = init_stft.clone().to(torch.complex64).exp()  #shape of [n_s, n_f, n_t]
     x = torch.tensor(stft_mix).squeeze()
     eps = 1e-28
     "Initialize spatial covariance matrix"
@@ -245,6 +245,7 @@ def em_10paper(init_stft, stft_mix, n_iter):
 
     for i in range(n_iter):
         "Get spectrogram- power spectram"
+        # vj = Rcjh/Rj[..., None]  #shape of [n_s, n_f, n_t], mean of all channels
         vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
         "cal spatial covariance matrix"
         Rj = 1/n_t* (Rcjh/(vj+eps)).sum(-1) # shape of [n_s, n_f]
@@ -258,7 +259,7 @@ def em_10paper(init_stft, stft_mix, n_iter):
         cjh = Wj * x  # shape of [n_s, n_f, n_t]
         "get covariance"
         Rcjh = cjh.abs()**2 + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
-        # print(Rcj)
+
     return cjh
 
 

@@ -1,30 +1,19 @@
 #%%
 from utils import *
 
-#%% load data
-"""sources shape of [n_comb, n_sample, time_len]
-    labels shape of [n_comb, n_class=6]"""
-n_sources = 6
-sources, l_s = get_mixdata_label(mix=1, pre='train_200_')
-mix, l_mix = get_mixdata_label(mix=n_sources, pre='train_200_')
-
-"Mixture for the EM"
-n_comb, n = 0, 0  # which example to test, first sample of 6 components
-plot_x(st_ft(mix[n_comb,n]), title='One example of 6-component mixture')  # plot input
-
 # %% Test data with power difference without EM
 """sources shape of [n_comb, n_sample, time_len]
     labels shape of [n_comb, n_class=6]"""
 n_sources = 6
+n_comb, n = 0, 0  # which example to test
 sources, l_s = get_mixdata_label(mix=1, pre='train_200_')
 mix, l_mix = get_mixdata_label(mix=n_sources, pre='train_200_')
 
 "Mixture for the EM"
-n_comb, n = 0, 0  # which example to test
-# x = mix[n_comb,n]
-db = 20  # db in [0, 20]
+db = 10  # db in [0, 20]
 power_ratio = 10**(-1*db/20)
-x = sources[1, n]*power_ratio + sources[2, n] + sources[3, n]
+# x = sources[1, n]*power_ratio + sources[2, n] + sources[3, n]
+x = mix[n_comb,n]  # mixture of 6 components without power diff.
 plot_x(x, title='Input mixture')  # plot input
 
 s_stft = torch.zeros(6, 200, 200)
@@ -41,22 +30,28 @@ for i in range(6):
         torch.cuda.empty_cache()
 
 "plot results"
-for i in range(6):
-    plot_log_stft(s_stft[i], title=fname[i])
+# for i in range(6):
+#     plot_log_stft(s_stft[i], title=fname[i])
 
 #%%
 "EM to get each sources"
-x = sources[1, n] + sources[2, n]
-gt_stft = torch.rand(2, 200, 200, dtype=torch.complex64)
-for i in [1, 2]:
-    gt_stft[i-1] = torch.tensor(st_ft(sources[i, n]))
-
-n_iter = 30
+n_iter = 20
 mse = []
-init = s_stft[1:3] #  gt_stft.abs().log()
-for i in range(1, n_iter):
-    cjh = em_simple(init_stft=init, stft_mix=st_ft(x), n_iter=i)  # instead of import Norbert
-    mse.append((((cjh - gt_stft).abs()**2).sum()**0.5).item())
+var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+
+which_source = torch.tensor([1,2])
+x = sources[which_source, n].sum(0)
+gt_stft = torch.rand(which_source.shape[0], 200, 200, dtype=torch.complex64)
+for i in range(which_source.shape[0]):
+    gt_stft[i] = torch.tensor(st_ft(sources[i, n]))
+
+init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
+for ii in range(n_iter, n_iter+1):
+    # cjh = em_simple(init_stft=init, stft_mix=st_ft(x), n_iter=ii)  # instead of import Norbert
+    cjh, wj = em_10paper(init_stft=init, stft_mix=st_ft(x), n_iter=ii) 
+    mse.append((((cjh - gt_stft).abs()**2).sum()).item())
+    # for i in range(which_source.shape[0]):
+    #     plot_x(cjh[i], title=var_name[which_source[i]])
 plt.figure()
 plt.plot(mse, '-x')
 
@@ -64,8 +59,8 @@ plt.plot(mse, '-x')
 # %%
 "Visualize the output"
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
-for i in [0, 1]:
-    plot_x(cjh[i], title=var_name[i+1])
+for i in range(which_source.shape[0]):
+    plot_x(cjh[i], title=var_name[which_source[i]])
 
 # %%
 gt = sources[:, n]  # ground truth
