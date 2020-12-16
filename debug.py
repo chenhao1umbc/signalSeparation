@@ -18,7 +18,7 @@ plot_x(x, title='Input mixture')  # plot input
 
 s_stft = torch.zeros(6, 200, 200)
 fname = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
-xte = torch.tensor(st_ft(x)).reshape(1,1,200,200).abs().log().float()
+xte = st_ft(x).reshape(1,1,200,200).abs().log().float()
 te_cuda = xte.cuda()
 for i in range(6):
     model = UNet(n_channels=1, n_classes=1).cuda()
@@ -87,8 +87,8 @@ gt_stft = torch.rand(which_source.shape[0],200, 200, n_c, dtype=torch.complex64)
 for i in range(which_source.shape[0]):
     for ii in range(n_c):
         s = sources[which_source[i], n]*torch.exp(torch.tensor(1j*pi*i/12))
-        gt_stft[i, ... , ii] = torch.tensor(st_ft(s))
-        gt_stft[i, ... , ii] = torch.tensor(st_ft(s*torch.tensor(np.exp(1j*pi*i/128))))
+        gt_stft[i, ... , ii] = st_ft(s)
+        gt_stft[i, ... , ii] = awgn(st_ft(s), snr=20)
 
 init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
 for ii in range(n_iter):
@@ -96,17 +96,17 @@ for ii in range(n_iter):
     mse.append((((cjh - gt_stft).abs()**2).sum()).item())
 plt.figure()
 plt.plot(mse, '-x')
-# %%
-import norbert
-
-mse = []
-x = gt_stft.sum(0).permute(1,0,2).numpy()
-y = torch.stack((init.permute(2,1,0), init.permute(2,1,0)), -1 ).numpy()
-for ii in range(1):
-    yh, vh, rh = norbert.expectation_maximization(
-        y=y, x=x, iterations=ii) 
-    mse.append((((torch.tensor(yh) - gt_stft.permute(2,1, 3, 0)).abs()**2).sum()).item())
-plt.figure()
-plt.plot(mse, '-x')
+# # %%
+    # import norbert
+    # mse = []
+    # x = gt_stft.sum(0).permute(1,0,2).numpy()
+    # y = torch.stack((init.permute(2,1,0), init.permute(2,1,0)), -1 ).numpy()
+    # init = awgn(s_stft[which_source], snr=20)
+    # for ii in range(20):
+    #     yh, vh, rh = norbert.expectation_maximization(
+    #         y=y, x=x, iterations=ii) 
+    #     mse.append((((torch.tensor(yh) - gt_stft.permute(2,1, 3, 0)).abs()**2).sum()).item())
+    # plt.figure()
+    # plt.plot(mse, '-x')
 
 # %%

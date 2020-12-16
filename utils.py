@@ -325,12 +325,12 @@ def st_ft(x):
 
     Returns
     -------
-    [np.complex]
+    [torch.complex]
         [STFT with shift, shape of 200*200]
     """
     _, _, zm = stft(x, fs=4e7, nperseg=200, boundary=None)
     output = np.roll(zm, 100, axis=0).astype(np.complex)
-    return output
+    return torch.tensor(output)
 
 
 def plot_x(x, title='Input mixture'):
