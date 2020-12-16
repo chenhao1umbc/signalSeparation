@@ -24,6 +24,7 @@ torch.manual_seed(0)
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
+pi = np.pi
 
 class Opt():
     def __init__(self, ifgendata=False) -> None:
@@ -261,6 +262,57 @@ def em_10paper(init_stft, stft_mix, n_iter):
         Rcjh = cjh.abs()**2 + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
 
     return cjh
+
+
+def em10(init_stft, stft_mix, n_iter):
+    """This function is implemented using 2010's paper, for 1 channel with pytorch
+
+        Parameters
+        ----------
+        init_stft : [real tensor]
+            [shape of [n_source, f, t]]
+
+        stft_mix : [complex tensor]
+            [shape of [f, t, n_channel]]
+            
+        n_iter : [int]
+            [how many iterations for EM]
+
+        Returns
+        -------
+        [complex tensor]
+            [shape of [n_s, n_f, n_t, n_c]]
+    """
+    n_s = init_stft.shape[0]
+    n_f, n_t, n_c =  stft_mix.shape 
+    I =  torch.ones(n_s, n_f, n_t, n_c).diag_embed().to(torch.complex64)
+    eps = 1e-20  # no smaller than 1e-22
+    x = torch.tensor(stft_mix).unsqueeze(-1)  #shape of [n_s, n_f, n_t, n_c, 1]
+    "Initialize spatial covariance matrix"
+    Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
+    vj = init_stft.clone().to(torch.complex64).exp()
+    cjh = vj.clone().unsqueeze(-1)
+    for i in range(n_c-1):
+        cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
+
+    for i in range(n_iter):
+        Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
+        "Compute mixture covariance"
+        Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
+        "Calc. Wiener Filter"
+        Wj = Rcj / (Rx+eps) # shape of [n_s, n_f, n_t, n_c, n_c]
+        "get STFT estimation, the conditional mean"
+        cjh = Wj @ x  # shape of [n_s, n_f, n_t, n_c, 1]
+
+        "get covariance"
+        Rcjh = cjh@cjh.permute(0,1,2,4,3)+ (I -  Wj) * Rcj 
+        "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
+        vj = (Rj.inverse() * Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
+        "cal spatial covariance matrix"
+        Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
+
+    return cjh.squeeze_()
+
 
 
 def st_ft(x):
