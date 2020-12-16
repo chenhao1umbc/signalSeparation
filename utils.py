@@ -25,6 +25,7 @@ torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
 
 pi = np.pi
+e = np.exp(1)
 
 class Opt():
     def __init__(self, ifgendata=False) -> None:
@@ -291,7 +292,7 @@ def em10(init_stft, stft_mix, n_iter):
     "Initialize spatial covariance matrix"
     Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
     vj = init_stft.clone().to(torch.complex64).exp()
-    cjh = vj.clone().unsqueeze(-1)
+    cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
     for i in range(n_c-1):
         cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
 

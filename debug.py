@@ -85,10 +85,9 @@ which_source = torch.tensor([1,2])
 x = sources[which_source, n].sum(0)
 gt_stft = torch.rand(which_source.shape[0],200, 200, n_c, dtype=torch.complex64)
 for i in range(which_source.shape[0]):
-    for ii in range(n_c):
-        s = sources[which_source[i], n]*torch.exp(torch.tensor(1j*pi*i/12))
-        gt_stft[i, ... , ii] = st_ft(s)
-        gt_stft[i, ... , ii] = awgn(st_ft(s), snr=20)
+    s = sources[which_source[i], n]*torch.exp(torch.tensor(1j*pi*i/12))
+    gt_stft[i, ... , 0] = st_ft(s)
+    gt_stft[i, ... , 1] = st_ft(s)*e**(1j*pi/20) # awgn(st_ft(s), snr=20)
 
 init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
 for ii in range(n_iter):
