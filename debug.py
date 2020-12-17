@@ -28,51 +28,29 @@ for i in range(6):
     with torch.no_grad():
         s_stft[i] = model(te_cuda).cpu().squeeze()
         torch.cuda.empty_cache()
+ 
+#%% Single Channel =====================================
+"EM to get each sources"
+n_iter = 20
+mse = []
+var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 
-"plot results"
-# for i in range(6):
-#     plot_log_stft(s_stft[i], title=fname[i])
-# 
-    # #%%
-    # "EM to get each sources"
-    # n_iter = 20
-    # mse = []
-    # var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+which_source = torch.tensor([1,2])
+x = sources[which_source, n].sum(0)
+gt_stft = torch.rand(which_source.shape[0], 200, 200, dtype=torch.complex64)
+for i in range(which_source.shape[0]):
+    gt_stft[i] = st_ft(sources[i, n])
 
-    # which_source = torch.tensor([1,2])
-    # x = sources[which_source, n].sum(0)
-    # gt_stft = torch.rand(which_source.shape[0], 200, 200, dtype=torch.complex64)
-    # for i in range(which_source.shape[0]):
-    #     gt_stft[i] = torch.tensor(st_ft(sources[i, n]))
-
-    # init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
-    # for ii in range(n_iter, n_iter+1):
-    #     # cjh = em_simple(init_stft=init, stft_mix=st_ft(x), n_iter=ii)  # instead of import Norbert
-    #     cjh = em_10paper(init_stft=init, stft_mix=st_ft(x), n_iter=ii) 
-    #     mse.append((((cjh - gt_stft).abs()**2).sum()).item())
-    #     # for i in range(which_source.shape[0]):
-    #     #     plot_x(cjh[i], title=var_name[which_source[i]])
-    # plt.figure()
-    # plt.plot(mse, '-x')
-
-
-    # # %%
-    # "Visualize the output"
-    # var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
+for ii in range(n_iter):
+    cjh, likelihood = em_simple(init_stft=init, stft_mix=st_ft(x), n_iter=ii)  # instead of import Norbert
+    # cjh, likelihood = em_10paper(init_stft=init, stft_mix=st_ft(x), n_iter=ii) 
+    mse.append((((cjh - gt_stft).abs()**2).sum()).item())
     # for i in range(which_source.shape[0]):
     #     plot_x(cjh[i], title=var_name[which_source[i]])
+plt.figure()
+plt.plot(mse, '-x')
 
-    # # %%
-    # gt = sources[:, n]  # ground truth
-    # _, ss = istft(np.roll(cjh[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
-    # _, sss = istft(np.roll(gt_stft[0], 100, axis=0), fs=4e7, nperseg=200, boundary=None)
-
-    # # %%
-    # a = np.random.rand(20100) +1j*np.random.rand(20100)
-    # _, _, A = stft(a, fs=4e7, nperseg=200, boundary=None)
-    # _, aa = istft(A, fs=4e7, nperseg=200, input_onesided=False, boundary=None )
-    # plt.plot(aa.imag[:500]+1)
-    # plt.plot(a.imag[:500])
 
 #%% Multi-Channel
 "EM to get each sources"
@@ -91,21 +69,35 @@ for i in range(which_source.shape[0]):
 
 init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
 for ii in range(n_iter):
-    cjh = em10(init_stft=init, stft_mix=gt_stft.sum(0), n_iter=ii) 
+    cjh, likelihood = em10(init_stft=init, stft_mix=gt_stft.sum(0), n_iter=10) 
     mse.append((((cjh - gt_stft).abs()**2).sum()).item())
 plt.figure()
 plt.plot(mse, '-x')
-# # %%
-    # import norbert
-    # mse = []
-    # x = gt_stft.sum(0).permute(1,0,2).numpy()
-    # y = torch.stack((init.permute(2,1,0), init.permute(2,1,0)), -1 ).numpy()
-    # init = awgn(s_stft[which_source], snr=20)
-    # for ii in range(20):
-    #     yh, vh, rh = norbert.expectation_maximization(
-    #         y=y, x=x, iterations=ii) 
-    #     mse.append((((torch.tensor(yh) - gt_stft.permute(2,1, 3, 0)).abs()**2).sum()).item())
-    # plt.figure()
-    # plt.plot(mse, '-x')
 
+
+# %% Norbert Multi-Channel
+import norbert
+mse = []
+x = gt_stft.sum(0).permute(1,0,2).numpy()
+y = torch.stack((init.permute(2,1,0), init.permute(2,1,0)), -1 ).numpy()
+init = awgn(s_stft[which_source], snr=20)
+for ii in range(20):
+    yh, vh, rh = norbert.expectation_maximization(
+        y=y, x=x, iterations=ii) 
+    mse.append((((torch.tensor(yh) - gt_stft.permute(2,1, 3, 0)).abs()**2).sum()).item())
+plt.figure()
+plt.plot(mse, '-x')
+
+
+
+
+
+
+
+# %%  how to do inverse STFT
+a = np.random.rand(20100) +1j*np.random.rand(20100)
+_, _, A = stft(a, fs=4e7, nperseg=200, boundary=None)
+_, aa = istft(A, fs=4e7, nperseg=200, input_onesided=False, boundary=None )
+plt.plot(aa.imag[:500]+1)
+plt.plot(a.imag[:500])
 # %%

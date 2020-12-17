@@ -1,4 +1,5 @@
 #@title Adding all the packages
+from operator import invert
 import os
 import h5py 
 import numpy as np
@@ -173,6 +174,29 @@ def awgn(x, snr=20):
     return x+noise.to(x.dtype)
 
 
+def calc_likelihood(x, Rx):
+    """Calculate the likelihood function of mixture x
+        p(x|Rx) = \Pi_{n,f} 1/det(pi*Rx) e^{-x^H Rx^{-1} x}
+    Parameters
+    ----------
+    x : [torch.complex]
+        [shape of [n_f, n_t, n_c] or [n_f, n_t]]
+    Rx : [torch.complex]
+        [the covariance matrix, shape of [n_f, n_t, n_c, n_c] or [n_f, n_t]]
+    """
+    if x.dim() == 2:  # only 1 channel
+        part1 = pi*Rx
+        Rx_1 = 1/Rx
+        part2 = e**(x.conj() * Rx_1 * x)
+        P = part1 * part2
+    else:
+        part1 = torch.tensor(1/np.linalg.det(pi*Rx))
+        Rx_1 = torch.tensor(np.linalg.inv(Rx))
+        part2 = e**(x.unsqueeze(-2).conj() @ Rx_1 @x.unsqueeze(-1))
+        P = part1 * part2.squeeze()  # shape of [n_f, n_t]
+    return P.prod()
+
+
 def em_simple(init_stft, stft_mix, n_iter):
     """This function is exactly as the norber.expectation_maximization() but only
         works for 1 channel, using pytorch
@@ -199,6 +223,7 @@ def em_simple(init_stft, stft_mix, n_iter):
     eps = 1e-28
     # Rj =  (Rcj/(vj+eps)).sum(2)/n_t  # shape of [n_s, n_f]
     Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
+    likelihood = torch.zeros(n_iter)
 
     for i in range(n_iter):
         vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
@@ -211,8 +236,9 @@ def em_simple(init_stft, stft_mix, n_iter):
         Wj = vj*Rj[..., None] / (Rx+eps) # shape of [n_s, n_f, n_t]
         "get STFT estimation"
         cjh = Wj * x  # shape of [n_s, n_f, n_t]
+        likelihood[i] = calc_likelihood(x, Rx)
 
-    return cjh
+    return cjh, likelihood
 
 
 def em_10paper(init_stft, stft_mix, n_iter):
@@ -244,6 +270,7 @@ def em_10paper(init_stft, stft_mix, n_iter):
     "Initialize spatial covariance matrix"
     Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
     Rcjh = Rj[..., None] * cjh.abs()**2
+    likelihood = torch.zeros(n_iter)
 
     for i in range(n_iter):
         "Get spectrogram- power spectram"
@@ -253,6 +280,7 @@ def em_10paper(init_stft, stft_mix, n_iter):
         Rj = 1/n_t* (Rcjh/(vj+eps)).sum(-1) # shape of [n_s, n_f]
         "Compute mixture covariance"
         Rx = (vj * Rj[..., None]).sum(0)  #shape of [n_f, n_t]
+        likelihood[i] = calc_likelihood(x, Rx)
 
         Rcj = vj * Rj[..., None] # shape of [n_s, n_f, n_t]
         "Calc. Wiener Filter"
@@ -262,11 +290,11 @@ def em_10paper(init_stft, stft_mix, n_iter):
         "get covariance"
         Rcjh = cjh.abs()**2 + (1 -  Wj) * Rcj # shape of [n_s, n_f, n_t]
 
-    return cjh
+    return cjh, likelihood
 
 
 def em10(init_stft, stft_mix, n_iter):
-    """This function is implemented using 2010's paper, for 1 channel with pytorch
+    """This function is implemented using 2010's paper, for multiple channels with pytorch
 
         Parameters
         ----------
@@ -293,6 +321,7 @@ def em10(init_stft, stft_mix, n_iter):
     Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
     vj = init_stft.clone().to(torch.complex64).exp()
     cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
+    likelihood = torch.zeros(n_iter)
     for i in range(n_c-1):
         cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
 
@@ -304,15 +333,17 @@ def em10(init_stft, stft_mix, n_iter):
         Wj = Rcj / (Rx+eps) # shape of [n_s, n_f, n_t, n_c, n_c]
         "get STFT estimation, the conditional mean"
         cjh = Wj @ x  # shape of [n_s, n_f, n_t, n_c, 1]
+        likelihood[i] = calc_likelihood(torch.tensor(stft_mix), Rx)
 
         "get covariance"
         Rcjh = cjh@cjh.permute(0,1,2,4,3)+ (I -  Wj) * Rcj 
         "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
-        vj = (Rj.inverse() * Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
+        vj = (torch.tensor(np.linalg.pinv(Rj))\
+             * Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
         "cal spatial covariance matrix"
         Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
 
-    return cjh.squeeze_()
+    return cjh.squeeze_(), likelihood
 
 
 
