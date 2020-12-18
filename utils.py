@@ -185,16 +185,17 @@ def calc_likelihood(x, Rx):
         [the covariance matrix, shape of [n_f, n_t, n_c, n_c] or [n_f, n_t]]
     """
     if x.dim() == 2:  # only 1 channel
-        part1 = pi*Rx
+        p1 = (2*pi)**-0.5 * Rx**-0.5
         Rx_1 = 1/Rx
-        part2 = e**(x.conj() * Rx_1 * x)
-        P = part1 * part2
+        p2 = e**(-0.5*x.conj() * Rx_1 * x)
+        P = p1.log() + p2.log()
     else:
-        part1 = torch.tensor(1/np.linalg.det(pi*Rx))
+        n_c = Rx.shape[-1]
+        p1 = torch.tensor((2*pi)**(-n_c/2) * np.linalg.det(Rx)**-0.5)
         Rx_1 = torch.tensor(np.linalg.inv(Rx))
-        part2 = e**(x.unsqueeze(-2).conj() @ Rx_1 @x.unsqueeze(-1))
-        P = part1 * part2.squeeze()  # shape of [n_f, n_t]
-    return P.prod()
+        p2 = e**(-0.5*x.unsqueeze(-2).conj() @ Rx_1 @x.unsqueeze(-1))
+        P = p1.log() + p2.log().squeeze()  # shape of [n_f, n_t]
+    return P.sum()
 
 
 def em_simple(init_stft, stft_mix, n_iter):
