@@ -29,31 +29,31 @@ for i in range(6):
         s_stft[i] = model(te_cuda).cpu().squeeze()
         torch.cuda.empty_cache()
  
-#%% Single Channel =====================================
-"EM to get each sources"
-n_iter = 50
-mse = []
-var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
+# #%% Single Channel =====================================
+    # "EM to get each sources"
+    # n_iter = 50
+    # mse = []
+    # var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 
-which_source = torch.tensor([1,2])
-x = sources[which_source, n].sum(0)
-gt_stft = torch.rand(which_source.shape[0], 200, 200, dtype=torch.complex64)
-for i in range(which_source.shape[0]):
-    gt_stft[i] = st_ft(sources[i, n])
-
-init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
-for ii in range(n_iter):
-    # cjh, likelihood = em_simple(init_stft=init, stft_mix=st_ft(x), n_iter=ii)  # instead of import Norbert
-    cjh, likelihood = em_10paper(init_stft=init, stft_mix=st_ft(x), n_iter=ii) 
-    mse.append((((cjh - gt_stft).abs()**2).sum()).item())
+    # which_source = torch.tensor([1,2])
+    # x = sources[which_source, n].sum(0)
+    # gt_stft = torch.rand(which_source.shape[0], 200, 200, dtype=torch.complex64)
     # for i in range(which_source.shape[0]):
-    #     plot_x(cjh[i], title=var_name[which_source[i]])
-plt.figure()
-plt.plot(mse, '-x')
+    #     gt_stft[i] = st_ft(sources[i, n])
+
+    # init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
+    # for ii in range(n_iter):
+    #     # cjh, likelihood = em_simple(init_stft=init, stft_mix=st_ft(x), n_iter=ii)  # instead of import Norbert
+    #     cjh, likelihood = em_10paper(init_stft=init, stft_mix=st_ft(x), n_iter=ii) 
+    #     mse.append((((cjh - gt_stft).abs()**2).sum()).item())
+    #     # for i in range(which_source.shape[0]):
+    #     #     plot_x(cjh[i], title=var_name[which_source[i]])
+    # plt.figure()
+    # plt.plot(mse, '-x')
 
 #%% Multi-Channel
 "EM to get each sources"
-n_iter = 50
+n_iter = 20
 n_c = 2  # 2 channels
 mse = []
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
@@ -68,7 +68,7 @@ for i in range(which_source.shape[0]):
 
 init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
 for ii in range(n_iter):
-    cjh, likelihood = em10(init_stft=init, stft_mix=gt_stft.sum(0), n_iter=ii) 
+    cjh, likelihood = em10(init_stft=init, stft_mix=gt_stft.sum(0), n_iter=10) 
     mse.append((((cjh - gt_stft).abs()**2).sum()).item())
 plt.figure()
 plt.plot(mse, '-x')

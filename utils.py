@@ -185,15 +185,15 @@ def calc_likelihood(x, Rx):
         [the covariance matrix, shape of [n_f, n_t, n_c, n_c] or [n_f, n_t]]
     """
     if x.dim() == 2:  # only 1 channel
-        p1 = (2*pi)**-0.5 * Rx**-0.5
+        p1 = (pi*Rx)**-1
         Rx_1 = 1/Rx
-        p2 = e**(-0.5*x.conj() * Rx_1 * x)
+        p2 = e**(-1*x.conj() * Rx_1 * x)
         P = p1.log() + p2.log()
     else:
         n_c = Rx.shape[-1]
-        p1 = torch.tensor((2*pi)**(-n_c/2) * np.linalg.det(Rx)**-0.5)
+        p1 = torch.tensor( np.linalg.det(pi*Rx)**-1)
         Rx_1 = torch.tensor(np.linalg.inv(Rx))
-        p2 = e**(-0.5*x.unsqueeze(-2).conj() @ Rx_1 @x.unsqueeze(-1))
+        p2 = e**(-x.unsqueeze(-2).conj() @ Rx_1 @x.unsqueeze(-1))
         P = p1.log() + p2.log().squeeze()  # shape of [n_f, n_t]
     return P.sum()
 
@@ -224,7 +224,7 @@ def em_simple(init_stft, stft_mix, n_iter):
     eps = 1e-28
     # Rj =  (Rcj/(vj+eps)).sum(2)/n_t  # shape of [n_s, n_f]
     Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
-    likelihood = torch.zeros(n_iter)
+    likelihood = torch.zeros(n_iter).to(torch.complex64)
 
     for i in range(n_iter):
         vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
@@ -271,12 +271,12 @@ def em_10paper(init_stft, stft_mix, n_iter):
     "Initialize spatial covariance matrix"
     Rj =  torch.ones(n_s, n_f).to(torch.complex64)  # shape of [n_s, n_f]
     Rcjh = Rj[..., None] * cjh.abs()**2
-    likelihood = torch.zeros(n_iter)
+    likelihood = torch.zeros(n_iter).to(torch.complex64)
 
     for i in range(n_iter):
         "Get spectrogram- power spectram"
-        # vj = Rcjh/Rj[..., None]  #shape of [n_s, n_f, n_t], mean of all channels
-        vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
+        vj = Rcjh/Rj[..., None]  #shape of [n_s, n_f, n_t], mean of all channels
+        # vj = cjh.abs()**2  #shape of [n_s, n_f, n_t], mean of all channels
         "cal spatial covariance matrix"
         Rj = 1/n_t* (Rcjh/(vj+eps)).sum(-1) # shape of [n_s, n_f]
         "Compute mixture covariance"
@@ -322,7 +322,7 @@ def em10(init_stft, stft_mix, n_iter):
     Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
     vj = init_stft.clone().to(torch.complex64).exp()
     cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
-    likelihood = torch.zeros(n_iter)
+    likelihood = torch.zeros(n_iter).to(torch.complex64)
     for i in range(n_c-1):
         cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
 
