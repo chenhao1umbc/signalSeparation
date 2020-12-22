@@ -53,12 +53,12 @@ for i in range(6):
 
 #%% Multi-Channel
 "EM to get each sources"
-n_iter = 10
+n_iter = 100
 n_c = 2  # 2 channels
 mse = []
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 
-which_source = torch.tensor([1,2])
+which_source = torch.tensor([0,1])
 x = sources[which_source, n].sum(0)
 gt_stft = torch.rand(which_source.shape[0],200, 200, n_c, dtype=torch.complex64)
 for i in range(which_source.shape[0]):
@@ -67,13 +67,17 @@ for i in range(which_source.shape[0]):
     gt_stft[i, ... , 1] = st_ft(s)*e**(1j*pi/20) # awgn(st_ft(s), snr=20)
 
 init = awgn(s_stft[which_source], snr=200) #  gt_stft.abs().log()
-for i in range(n_iter):
-    cjh, likelihood = em10(init_stft=init, stft_mix=gt_stft.sum(0), n_iter=10) 
-    mse.append((((cjh - gt_stft).abs()**2).sum()).item())
-    # for ii in range(which_source.shape[0]):
-    #     plot_x(cjh[ii,...,0], title=f'{var_name[which_source[ii]]} iter {i}')
+cjh_list, likelihood = em10(init_stft=init, stft_mix=gt_stft.sum(0), n_iter=n_iter) 
+
+for i in range(n_iter+1):
+    mse.append((((cjh_list[i] - gt_stft).abs()**2).sum()).item())
+    for ii in range(which_source.shape[0]):
+        plot_x(cjh_list[i][ii,...,0], title=f'{var_name[which_source[ii]]} iter {i}')
+    plt.close('all')
 plt.figure()
 plt.plot(mse, '-x')
+plt.figure()
+plt.plot(likelihood, '-x')
 
 # # %% Norbert Multi-Channel
     # import norbert

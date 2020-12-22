@@ -322,9 +322,11 @@ def em10(init_stft, stft_mix, n_iter):
     Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
     vj = init_stft.clone().to(torch.complex64).exp()
     cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
-    likelihood = torch.zeros(n_iter).to(torch.complex64)
+    cjh_list = []
     for i in range(n_c-1):
         cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
+    cjh_list.append(cjh.squeeze())
+    likelihood = torch.zeros(n_iter).to(torch.complex64)
 
     for i in range(n_iter):
         Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
@@ -334,6 +336,7 @@ def em10(init_stft, stft_mix, n_iter):
         Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_s, n_f, n_t, n_c, n_c]
         "get STFT estimation, the conditional mean"
         cjh = Wj @ x  # shape of [n_s, n_f, n_t, n_c, 1]
+        cjh_list.append(cjh.squeeze())
         likelihood[i] = calc_likelihood(torch.tensor(stft_mix), Rx)
 
         "get covariance"
@@ -344,7 +347,7 @@ def em10(init_stft, stft_mix, n_iter):
         "cal spatial covariance matrix"
         Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
 
-    return cjh.squeeze_(), likelihood
+    return cjh_list, likelihood
 
 
 
