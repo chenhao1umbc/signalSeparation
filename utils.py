@@ -331,16 +331,16 @@ def em10(init_stft, stft_mix, n_iter):
         "Compute mixture covariance"
         Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
         "Calc. Wiener Filter"
-        Wj = Rcj / (Rx+eps) # shape of [n_s, n_f, n_t, n_c, n_c]
+        Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_s, n_f, n_t, n_c, n_c]
         "get STFT estimation, the conditional mean"
         cjh = Wj @ x  # shape of [n_s, n_f, n_t, n_c, 1]
         likelihood[i] = calc_likelihood(torch.tensor(stft_mix), Rx)
 
         "get covariance"
-        Rcjh = cjh@cjh.permute(0,1,2,4,3)+ (I -  Wj) * Rcj 
+        Rcjh = cjh@cjh.permute(0,1,2,4,3).conj() + (I -  Wj) @ Rcj 
         "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
-        vj = (torch.tensor(np.linalg.pinv(Rj))\
-             * Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
+        vj = (torch.tensor(np.linalg.inv(Rj))\
+             @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
         "cal spatial covariance matrix"
         Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
 
