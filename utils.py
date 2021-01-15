@@ -1,5 +1,5 @@
 #@title Adding all the packages
-from operator import invert
+from operator import invert, xor
 import os
 import h5py 
 import numpy as np
@@ -8,6 +8,9 @@ from scipy.signal import stft
 from scipy.signal import istft 
 import itertools
 import norbert
+
+import tensorflow as tf
+import tensorflow.experimental.numpy as tnp
 
 import torch
 from torch import nn
@@ -190,11 +193,25 @@ def calc_likelihood(x, Rx):
         p2 = e**(-1*x.conj() * Rx_1 * x)
         P = p1.log() + p2.log()
     else:
-        n_c = Rx.shape[-1]
+        "calculated the log likelihood"
         p1 = torch.tensor( np.linalg.det(pi*Rx)**-1)
         Rx_1 = torch.tensor(np.linalg.inv(Rx))
         p2 = e**(-x.unsqueeze(-2).conj() @ Rx_1 @x.unsqueeze(-1))
         P = p1.log() + p2.log().squeeze()  # shape of [n_f, n_t]
+
+        "check the gradient value of the likelihood, not log likelihood"
+        # Rx = tf.convert_to_tensor(Rx.numpy())
+        # x = tf.convert_to_tensor(x.numpy())
+        # with tf.GradientTape() as t:
+        #     t.watch(Rx)
+        #     p1 = tf.linalg.det(pi*Rx)**-1
+        #     Rx_1 = tf.linalg.inv(Rx)
+        #     p2 = e**(-tf.matmul(
+        #             tf.matmul(tf.math.conj(tf.expand_dims(x, -2)), Rx_1 ),\
+        #             tf.expand_dims(x, -1)))
+        #     p = tf.reduce_sum(p1 + tf.squeeze(p2))  # shape of [n_f, n_t]
+        # dz_dx = t.gradient(p, Rx)
+        # print(dz_dx)
     return P.sum()
 
 
@@ -330,6 +347,7 @@ def em10(init_stft, stft_mix, n_iter):
 
     for i in range(n_iter):
         Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
+        if i != 0 : Rcj = Rcjh  # for debugging 
         "Compute mixture covariance"
         Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
         "Calc. Wiener Filter"
@@ -370,7 +388,7 @@ def st_ft(x):
 
 
 def plot_x(x, title='Input mixture'):
-    """plot stft of x
+    """plot log_|stft| of x
 
     Parameters
     ----------
