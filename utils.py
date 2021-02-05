@@ -10,7 +10,6 @@ import itertools
 import norbert
 
 import tensorflow as tf
-import tensorflow.experimental.numpy as tnp
 
 import torch
 from torch import nn
@@ -347,7 +346,7 @@ def em10(init_stft, stft_mix, n_iter):
 
     for i in range(n_iter):
         Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
-        if i != 0 : Rcj = Rcjh  # for debugging 
+        # if i != 0 : Rcj = Rcjh  # for debugging 
         "Compute mixture covariance"
         Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
         "Calc. Wiener Filter"

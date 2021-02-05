@@ -58,7 +58,7 @@ n_c = 2  # 2 channels
 mse = []
 var_name = ['ble', 'bt', 'fhss1', 'fhss2', 'wifi1', 'wifi2']
 
-which_source = torch.tensor([1,2])
+which_source = torch.tensor([3,4])
 x = sources[which_source, n].sum(0)
 gt_stft = torch.rand(which_source.shape[0],200, 200, n_c, dtype=torch.complex64)
 for i in range(which_source.shape[0]):
@@ -66,8 +66,8 @@ for i in range(which_source.shape[0]):
     gt_stft[i, ... , 0] = st_ft(s)
     gt_stft[i, ... , 1] = st_ft(s*e**(1j*pi/12*(i+1))) # awgn(st_ft(s), snr=20)
 
-init = awgn(s_stft[which_source], snr=100) #  gt_stft.abs().log()
-# init = torch.rand(2, 200, 200)/10 -10.8
+init = awgn(s_stft[which_source], snr=10) #  gt_stft.abs().log()
+# init = torch.rand(2, 200, 200) -9.8
 cjh_list, likelihood = em10(init_stft=init, stft_mix=gt_stft.sum(0), n_iter=n_iter) 
 
 for i in [0,1,30,50,90]:
