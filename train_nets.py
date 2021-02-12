@@ -1,26 +1,26 @@
 """
-This part is done in the Colab, here it is just a copy
+This part is done in the Colab, here it is just a copy.
+I have tried the optimizer as Adam, AdamP, adabound, Ranger and RAdam
+activate function as ReLu and LeakyRelu
+ReLu has jitter issue, adabound too slow, Ranger has overfitting, AdamP is like Adam
+
+Final version is RAdam, and leakyRelu
 """
 
 #%%
 from utils import *
-
+import torch_optimizer as optim
 opt = {}
-opt['n_epochs'] = 101
+opt['n_epochs'] = 25
 opt['lr'] = 0.001
 
 model = UNet(n_channels=1, n_classes=1).cuda()
-# optimizer = optim.RMSprop(net.parameters(), lr=lr, weight_decay=1e-8, momentum=0.9)
-# optimizer = torch.optim.Adam(model.parameters(), lr=opt['lr'], weight_decay=1e-5)
-optimizer = optim.AdaBound(
+optimizer = optim.RAdam(
     model.parameters(),
-    lr= 1e-3,
-    betas= (0.9, 0.999),
-    final_lr = 0.1,
-    gamma=1e-3,
-    eps= 1e-8,
+    lr= opt['lr'],
+    betas=(0.9, 0.999),
+    eps=1e-8,
     weight_decay=0,
-    amsbound=False,
 )
 criterion = nn.MSELoss()
 tr = torch.load('../data/data_ss/fhss1_tr_200.pt')  # x, y, l
@@ -84,17 +84,17 @@ with torch.no_grad():
     te_yh = model(te_cuda).cpu().squeeze()
     torch.cuda.empty_cache()
 
-    plt.figure();
+    plt.figure()
     plt.imshow(xte[1], interpolation='None')
-    plt.colorbar();
+    plt.colorbar()
     plt.title('Input')
 
-    plt.figure();
+    plt.figure()
     plt.imshow(te_yh[1], interpolation='None')
-    plt.colorbar();
+    plt.colorbar()
     plt.title('Output')
 
-    plt.figure();
+    plt.figure()
     plt.imshow(yte[1], interpolation='None')
-    plt.colorbar();
+    plt.colorbar()
     plt.title('Ground Truth')
