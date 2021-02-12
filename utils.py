@@ -176,6 +176,24 @@ def awgn(x, snr=20):
     return x+noise.to(x.dtype)
 
 
+def st_ft(x):
+    """This is customized stft with np.roll and certain sampling freq.
+
+    Parameters
+    ----------
+    x : [np.complex or torch.complex64]
+        [time series, shape of 20100]
+
+    Returns
+    -------
+    [torch.complex]
+        [STFT with shift, shape of 200*200]
+    """
+    _, _, zm = stft(x, fs=4e7, nperseg=200, boundary=None)
+    output = np.roll(zm, 100, axis=0).astype(np.complex)
+    return torch.tensor(output)
+
+#%% EM related functions ####################################################################
 def calc_likelihood(x, Rx):
     """Calculate the likelihood function of mixture x
         p(x|Rx) = \Pi_{n,f} 1/det(pi*Rx) e^{-x^H Rx^{-1} x}
@@ -368,24 +386,7 @@ def em10(init_stft, stft_mix, n_iter):
 
 
 
-def st_ft(x):
-    """This is customized stft with np.roll and certain sampling freq.
-
-    Parameters
-    ----------
-    x : [np.complex or torch.complex64]
-        [time series, shape of 20100]
-
-    Returns
-    -------
-    [torch.complex]
-        [STFT with shift, shape of 200*200]
-    """
-    _, _, zm = stft(x, fs=4e7, nperseg=200, boundary=None)
-    output = np.roll(zm, 100, axis=0).astype(np.complex)
-    return torch.tensor(output)
-
-
+#%% This section is for the plot functions ##############################################
 def plot_x(x, title='Input mixture'):
     """plot log_|stft| of x
 
