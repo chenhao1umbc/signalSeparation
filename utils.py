@@ -419,3 +419,187 @@ def plot_log_stft(stft_mix, title="STFT"):
     plt.imshow(stft_mix, vmax=-3, vmin=-11, aspect='auto', interpolation='None')
     plt.title(title)
     plt.colorbar()
+
+
+
+#%% this is a new section ##############################################
+def load_data(data='train'):
+    # TODO
+    if data == 'train':
+        return 0
+    else:
+        return 1
+
+
+def init_neural_network(opts):
+    model = UNet(n_channels=1, n_classes=1).cuda()
+    return model
+
+
+def train_NEM(V, X, model, opts):
+    """This function is the main body of the training algorithm of NeuralEM for Source Separation
+
+    Args:
+        i is sample index, 
+        j is source index, 
+        f is frequecy index, 
+        n is frame(time) index,
+        m is channel index
+
+        V ([real tensor]): [the initial PSD of each mixture sample, shape of [i, f, n]]
+        X ([complex tensor]): [training mixture samples, shape of [i, j, f, n, m]]
+        model ([neural network]): [neural network with random initials]
+        opts ([dictionary]): [parameters are contained]
+
+    Returns:
+        vj is the updated V, shape of [i, f, n]
+        cj is the source estimation [i, j, f, n, m]
+        Rj is the covariace matrix [i, j, m, m]
+        model is updated neural network
+
+    """
+
+    #%% split data
+    xtr, vtr , xval, vval = split_data(X, V)
+    
+    n_iter = opts.n_iter
+    n_s = V.shape[0]
+    n_f, n_t, n_c =  X.shape 
+    I =  torch.ones(n_s, n_f, n_t, n_c).diag_embed().to(torch.complex64)
+    eps = 1e-20  # no smaller than 1e-22
+    X = torch.tensor(X).unsqueeze(-1)  #shape of [n_s, n_f, n_t, n_c, 1]
+    "Initialize spatial covariance matrix"
+    Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
+    vj = V.clone().to(torch.complex64).exp()
+    cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
+    cjh_list = []
+    for i in range(n_c-1):
+        cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
+    cjh_list.append(cjh.squeeze())
+    likelihood = torch.zeros(n_iter).to(torch.complex64)
+
+    criterion = nn.MSELoss()
+    optimizer = optim.RAdam(
+                    model.parameters(),
+                    lr= opts['lr'],
+                    betas=(0.9, 0.999),
+                    eps=1e-8,
+                    weight_decay=0)
+                
+    # for i in range(n_iter):
+    #     # the E-step
+    #     Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
+    #     "Compute mixture covariance"
+    #     Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
+    #     "Calc. Wiener Filter"
+    #     Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_s, n_f, n_t, n_c, n_c]
+    #     "get STFT estimation, the conditional mean"
+    #     cjh = Wj @ X  # shape of [n_s, n_f, n_t, n_c, 1]
+    #     "get covariance"
+    #     Rcjh = cjh@cjh.permute(0,1,2,4,3).conj() + (I -  Wj) @ Rcj
+
+    #     #record the result 
+    #     cjh_list.append(cjh.squeeze())
+    #     likelihood[i] = calc_likelihood(torch.tensor(X), Rx)
+
+    #     # the M-step
+    #     "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
+    #     gammaj = (torch.tensor(np.linalg.inv(Rj))\
+    #          @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
+    #     "cal spatial covariance matrix"
+    #     Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
+
+    loss_train, loss_cv = [], []
+    for epoch in range(opts['n_epochs']):    
+
+        # the neural network step
+        model.train()
+        for i, (X, y, l) in enumerate(tr): 
+            out = model(X.unsqueeze(1).cuda())
+            optimizer.zero_grad()  
+
+            loss = criterion(out.squeeze(), y.cuda())              
+            loss.backward()
+            optimizer.step()
+            loss_train.append(loss.data.item())
+            torch.cuda.empty_cache()
+            if i%50 == 0: print(f'Current iter is {i} in epoch {epoch}')
+    
+        model.eval()
+        with torch.no_grad():
+            cv_loss = 0
+            for xval, yval, lval in va: 
+                cv_cuda = xval.unsqueeze(1).cuda()
+                cv_yh = model(cv_cuda).cpu().squeeze()
+                cv_loss = cv_loss + Func.mse_loss(cv_yh, yval)
+                torch.cuda.empty_cache()
+            loss_cv.append(cv_loss/106)  # averaged over all the iterations
+
+
+
+        
+
+
+
+        if epoch%1 ==0:
+            plt.figure()
+            plt.plot(loss_train[-1400::50], '-x')
+            plt.title('train loss per 50 iter in last 1400 iterations')
+
+            plt.figure()
+            plt.plot(loss_cv, '--xr')
+            plt.title('val loss per epoch')
+            plt.show()
+        
+        torch.save(model.state_dict(), './f1_unet'+str(epoch)+'.pt')
+        print('current epoch is ', epoch)
+
+        #%% Check convergence
+        "if loss_cv consecutively going up for 5 epochs --> stop"
+        if check_stop(loss_cv):
+            break
+
+
+    return cjh_list, likelihood
+
+
+def split_data(X, V):
+    # TODO
+    xtr, vtr , xval, vval = 0
+    return xtr, vtr , xval, vval
+
+
+def check_stop(loss):
+    "if loss consecutively goes up for 5 epochs --> stop"
+    r = [loss[-i]>loss[-i-1] for i in range(5)]
+    rr = True
+    for i in r:
+        rr = rr and i
+    return rr
+
+
+
+def test_NEM(V, X, model, opts):
+    # TODO
+    """This function is the main body of the training algorithm of NeuralEM for Source Separation
+
+    Args:
+        i is sample index, 
+        j is source index, 
+        f is frequecy index, 
+        n is frame(time) index,
+        m is channel index
+
+        V ([real tensor]): [the initial PSD of each mixture sample, shape of [i, f, n]]
+        X ([complex tensor]): [training mixture samples, shape of [i, j, f, n, m]]
+        model ([neural network]): [neural network with random initials]
+        opts ([dictionary]): [parameters are contained]
+
+    Returns:
+        vj is the updated V, shape of [i, f, n]
+        cj is the source estimation [i, j, f, n, m]
+        Rj is the covariace matrix [i, j, m, m]
+        model is updated neural network
+
+    """
+    pass
