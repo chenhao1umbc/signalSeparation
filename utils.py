@@ -440,43 +440,31 @@ def train_NEM(V, X, model, opts):
     """This function is the main body of the training algorithm of NeuralEM for Source Separation
 
     Args:
-        i is sample index, 
-        j is source index, 
-        f is frequecy index, 
-        n is frame(time) index,
-        m is channel index
+        i is sample index, total of n_i 
+        j is source index, total of n_s
+        f is frequecy index, total of n_f
+        n is frame(time) index, total of n_t
+        m is channel index, total of n_c
 
-        V ([real tensor]): [the initial PSD of each mixture sample, shape of [i, f, n]]
-        X ([complex tensor]): [training mixture samples, shape of [i, j, f, n, m]]
+        V ([real tensor]): [the initial PSD of each mixture sample, shape of [n_i, n_s, n_f, n_t]]
+        X ([complex tensor]): [training mixture samples, shape of [n_i, n_f, n_t, n_c]]
         model ([neural network]): [neural network with random initials]
         opts ([dictionary]): [parameters are contained]
 
     Returns:
-        vj is the updated V, shape of [i, f, n]
-        cj is the source estimation [i, j, f, n, m]
-        Rj is the covariace matrix [i, j, m, m]
+        vj is the updated V, shape of [n_i, n_s, n_f, n_t]
+        cj is the source estimation [n_i, n_s, n_f, n_t, n_c]
+        Rj is the covariace matrix [n_i, n_s, n_c]
         model is updated neural network
 
     """
+  
 
-    #%% split data
-    xtr, vtr , xval, vval = split_data(X, V)
-    
-    n_iter = opts.n_iter
-    n_s = V.shape[0]
-    n_f, n_t, n_c =  X.shape 
+    n_s = V.shape[1]
+    n_i, n_f, n_t, n_c =  x.shape 
     I =  torch.ones(n_s, n_f, n_t, n_c).diag_embed().to(torch.complex64)
     eps = 1e-20  # no smaller than 1e-22
-    X = torch.tensor(X).unsqueeze(-1)  #shape of [n_s, n_f, n_t, n_c, 1]
-    "Initialize spatial covariance matrix"
-    Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
-    vj = V.clone().to(torch.complex64).exp()
-    cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
-    cjh_list = []
-    for i in range(n_c-1):
-        cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
-    cjh_list.append(cjh.squeeze())
-    likelihood = torch.zeros(n_iter).to(torch.complex64)
+    tr = wrap(X, V)  # tr is a data loader
 
     criterion = nn.MSELoss()
     optimizer = optim.RAdam(
@@ -485,37 +473,46 @@ def train_NEM(V, X, model, opts):
                     betas=(0.9, 0.999),
                     eps=1e-8,
                     weight_decay=0)
-                
-    # for i in range(n_iter):
-    #     # the E-step
-    #     Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
-    #     "Compute mixture covariance"
-    #     Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
-    #     "Calc. Wiener Filter"
-    #     Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_s, n_f, n_t, n_c, n_c]
-    #     "get STFT estimation, the conditional mean"
-    #     cjh = Wj @ X  # shape of [n_s, n_f, n_t, n_c, 1]
-    #     "get covariance"
-    #     Rcjh = cjh@cjh.permute(0,1,2,4,3).conj() + (I -  Wj) @ Rcj
+    loss_train = []
 
-    #     #record the result 
-    #     cjh_list.append(cjh.squeeze())
-    #     likelihood[i] = calc_likelihood(torch.tensor(X), Rx)
-
-    #     # the M-step
-    #     "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
-    #     gammaj = (torch.tensor(np.linalg.inv(Rj))\
-    #          @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
-    #     "cal spatial covariance matrix"
-    #     Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
-
-    loss_train, loss_cv = [], []
     for epoch in range(opts['n_epochs']):    
-
-        # the neural network step
         model.train()
-        for i, (X, y, l) in enumerate(tr): 
-            out = model(X.unsqueeze(1).cuda())
+        for i, x, v in enumerate(tr): 
+            "Initialize spatial covariance matrix"
+            Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
+            vj = v.clone().to(torch.complex64) # shape of [n_i, n_s, n_f, n_t]
+            cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
+            cjh_list = []
+            for i in range(n_c-1):
+                cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
+            cjh_list.append(cjh.squeeze())
+            likelihood = torch.zeros(opts['n_iter']).to(torch.complex64)
+
+            
+            # the E-step
+            Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
+            "Compute mixture covariance"
+            Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
+            "Calc. Wiener Filter"
+            Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_s, n_f, n_t, n_c, n_c]
+            "get STFT estimation, the conditional mean"
+            cjh = Wj @ x  # shape of [n_s, n_f, n_t, n_c, 1]
+            "get covariance"
+            Rcjh = cjh@cjh.permute(0,1,2,4,3).conj() + (I -  Wj) @ Rcj
+
+            #record the result 
+            cjh_list.append(cjh.squeeze())
+            likelihood[i] = calc_likelihood(torch.tensor(x), Rx)
+
+            # the M-step
+            "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
+            gammaj = (torch.tensor(np.linalg.inv(Rj))\
+                @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
+            "cal spatial covariance matrix"
+            Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
+
+            #%% the neural network step
+            out = model(x.unsqueeze(1).cuda())
             optimizer.zero_grad()  
 
             loss = criterion(out.squeeze(), y.cuda())              
@@ -524,22 +521,6 @@ def train_NEM(V, X, model, opts):
             loss_train.append(loss.data.item())
             torch.cuda.empty_cache()
             if i%50 == 0: print(f'Current iter is {i} in epoch {epoch}')
-    
-        model.eval()
-        with torch.no_grad():
-            cv_loss = 0
-            for xval, yval, lval in va: 
-                cv_cuda = xval.unsqueeze(1).cuda()
-                cv_yh = model(cv_cuda).cpu().squeeze()
-                cv_loss = cv_loss + Func.mse_loss(cv_yh, yval)
-                torch.cuda.empty_cache()
-            loss_cv.append(cv_loss/106)  # averaged over all the iterations
-
-
-
-        
-
-
 
         if epoch%1 ==0:
             plt.figure()
@@ -559,7 +540,6 @@ def train_NEM(V, X, model, opts):
         if check_stop(loss_cv):
             break
 
-
     return cjh_list, likelihood
 
 
@@ -577,6 +557,13 @@ def check_stop(loss):
         rr = rr and i
     return rr
 
+
+def wrap(x, v, opts):
+    """Wrap X and V for training or testing, in a batch manner
+    """
+    data = Data.TensorDataset(x, v)
+    data = Data.DataLoader(data, batch_size=opts['n_batch'], shuffle=True)
+    return data
 
 
 def test_NEM(V, X, model, opts):
@@ -602,4 +589,13 @@ def test_NEM(V, X, model, opts):
         model is updated neural network
 
     """
-    pass
+    loss_cv = []
+    model.eval()
+    with torch.no_grad():
+        cv_loss = 0
+        for xval, yval, lval in va: 
+            cv_cuda = xval.unsqueeze(1).cuda()
+            cv_yh = model(cv_cuda).cpu().squeeze()
+            cv_loss = cv_loss + Func.mse_loss(cv_yh, yval)
+            torch.cuda.empty_cache()
+        loss_cv.append(cv_loss/106)  # averaged over all the iterations
