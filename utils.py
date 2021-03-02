@@ -460,8 +460,6 @@ def train_NEM(V, X, model, opts):
         model is updated neural network
 
     """
-  
-
     n_batch, n_s = V.shape[1], opts['n_batch']
     n_i, n_f, n_t, n_c =  X.shape 
     I =  torch.ones(n_batch, n_s, n_f, n_t, n_c).diag_embed().to(torch.complex64)
