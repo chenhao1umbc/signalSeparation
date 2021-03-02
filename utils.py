@@ -1,6 +1,8 @@
 #@title Adding all the packages
 from operator import invert, xor
 import os
+
+from numpy.core.fromnumeric import transpose
 import h5py 
 import numpy as np
 import scipy.io as sio
@@ -476,11 +478,11 @@ def train_NEM(V, X, model, opts):
     loss_train = []
 
     for epoch in range(opts['n_epochs']):    
-        model.train()
         for i, (x, v) in enumerate(tr): # x has shape of [n_batch, n_f, n_t, n_c, 1]
             "Initialize spatial covariance matrix"
             Rj =  torch.ones(n_batch, n_s, 1, 1, n_c).diag_embed().to(torch.complex64)
             vj = v.clone().to(torch.complex64) # shape of [n_batch, n_s, n_f, n_t]
+            gammaj = torch.ones(n_batch, n_s, opts['gamma_dim'])
             likelihood = torch.zeros(opts['n_iter']).to(torch.complex64)
 
             for ii in range(opts['n_iter']):  # EM loop
@@ -488,6 +490,7 @@ def train_NEM(V, X, model, opts):
                 Rcj = (vj * Rj.permute(4,5,0,1,2,3)).permute(2,3,4,5,0,1) # shape as Rcjh
                 "Compute mixture covariance"
                 Rx = Rcj.sum(1)  #shape of [n_batch, n_f, n_t, n_c, n_c]
+                Rx = (Rx + Rx.transpose(-1, -2))/2  # make sure it is symetrix
                 "Calc. Wiener Filter"
                 Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_batch, n_s, n_f, n_t, n_c, n_c]
                 "get STFT estimation, the conditional mean"
@@ -499,17 +502,18 @@ def train_NEM(V, X, model, opts):
                 likelihood[i] = calc_likelihood(torch.tensor(x), Rx)
 
                 # the M-step
-                "cal spatial covariance matrix"
-                Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
-                "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
-                gammaj = (torch.tensor(np.linalg.inv(Rj))\
-                    @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
+                "cal spatial covariance matrix" #[...,None,None] is adding(unsqueeze) 2 dimesions
+                Rj = ((Rcjh/(vj+eps)[...,None, None]).sum((2,3))/n_t/n_f)[:,:,None,None,...]
+                "Back propagate to update the input of neural network"
+                model.eval()
+                loss = criterion(model(gammaj), x, Rj)
 
             #%% the neural network step
-            out = model(x.unsqueeze(1).cuda())
+            model.train()
+            vj = model(gammaj)
             optimizer.zero_grad()  
 
-            loss = criterion(out.squeeze(), y.cuda())              
+            loss = criterion(vj, x, Rj)              
             loss.backward()
             optimizer.step()
             loss_train.append(loss.data.item())
