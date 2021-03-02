@@ -460,11 +460,11 @@ def train_NEM(V, X, model, opts):
     """
   
 
-    n_s = V.shape[1]
-    n_i, n_f, n_t, n_c =  x.shape 
-    I =  torch.ones(n_s, n_f, n_t, n_c).diag_embed().to(torch.complex64)
+    n_batch, n_s = V.shape[1], opts['n_batch']
+    n_i, n_f, n_t, n_c =  X.shape 
+    I =  torch.ones(n_batch, n_s, n_f, n_t, n_c).diag_embed().to(torch.complex64)
     eps = 1e-20  # no smaller than 1e-22
-    tr = wrap(X, V)  # tr is a data loader
+    tr = wrap(X, V, opts)  # tr is a data loader
 
     criterion = nn.MSELoss()
     optimizer = optim.RAdam(
@@ -477,39 +477,33 @@ def train_NEM(V, X, model, opts):
 
     for epoch in range(opts['n_epochs']):    
         model.train()
-        for i, x, v in enumerate(tr): 
+        for i, (x, v) in enumerate(tr): # x has shape of [n_batch, n_f, n_t, n_c, 1]
             "Initialize spatial covariance matrix"
-            Rj =  torch.ones(n_s, n_f, 1, n_c).diag_embed().to(torch.complex64) 
-            vj = v.clone().to(torch.complex64) # shape of [n_i, n_s, n_f, n_t]
-            cjh = vj.clone().unsqueeze(-1)  # for n_ter == 0
-            cjh_list = []
-            for i in range(n_c-1):
-                cjh = torch.cat((cjh, vj.unsqueeze(-1)), dim=-1)
-            cjh_list.append(cjh.squeeze())
+            Rj =  torch.ones(n_batch, n_s, 1, 1, n_c).diag_embed().to(torch.complex64)
+            vj = v.clone().to(torch.complex64) # shape of [n_batch, n_s, n_f, n_t]
             likelihood = torch.zeros(opts['n_iter']).to(torch.complex64)
 
-            
-            # the E-step
-            Rcj = (vj * Rj.permute(3,4,0,1,2)).permute(2,3,4,0,1) # shape as Rcjh
-            "Compute mixture covariance"
-            Rx = Rcj.sum(0)  #shape of [n_f, n_t, n_c, n_c]
-            "Calc. Wiener Filter"
-            Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_s, n_f, n_t, n_c, n_c]
-            "get STFT estimation, the conditional mean"
-            cjh = Wj @ x  # shape of [n_s, n_f, n_t, n_c, 1]
-            "get covariance"
-            Rcjh = cjh@cjh.permute(0,1,2,4,3).conj() + (I -  Wj) @ Rcj
+            for ii in range(opts['n_iter']):  # EM loop
+                # the E-step
+                Rcj = (vj * Rj.permute(4,5,0,1,2,3)).permute(2,3,4,5,0,1) # shape as Rcjh
+                "Compute mixture covariance"
+                Rx = Rcj.sum(1)  #shape of [n_batch, n_f, n_t, n_c, n_c]
+                "Calc. Wiener Filter"
+                Wj = Rcj @ torch.tensor(np.linalg.inv(Rx)) # shape of [n_batch, n_s, n_f, n_t, n_c, n_c]
+                "get STFT estimation, the conditional mean"
+                cjh = Wj @ x  # shape of [n_batch, n_s, n_f, n_t, n_c, 1]
+                "get covariance"
+                Rcjh = cjh@cjh.permute(0,1,2,4,3).conj() + (I - Wj) @ Rcj
 
-            #record the result 
-            cjh_list.append(cjh.squeeze())
-            likelihood[i] = calc_likelihood(torch.tensor(x), Rx)
+                # check likihood convergence 
+                likelihood[i] = calc_likelihood(torch.tensor(x), Rx)
 
-            # the M-step
-            "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
-            gammaj = (torch.tensor(np.linalg.inv(Rj))\
-                @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
-            "cal spatial covariance matrix"
-            Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
+                # the M-step
+                "cal spatial covariance matrix"
+                Rj = ((Rcjh/(vj+eps)[...,None, None]).sum(2)/n_t).unsqueeze(2)
+                "Get spectrogram- power spectram"  #shape of [n_s, n_f, n_t]
+                gammaj = (torch.tensor(np.linalg.inv(Rj))\
+                    @ Rcjh).diagonal(dim1=-2, dim2=-1).sum(-1)/n_c
 
             #%% the neural network step
             out = model(x.unsqueeze(1).cuda())
@@ -543,12 +537,6 @@ def train_NEM(V, X, model, opts):
     return cjh_list, likelihood
 
 
-def split_data(X, V):
-    # TODO
-    xtr, vtr , xval, vval = 0
-    return xtr, vtr , xval, vval
-
-
 def check_stop(loss):
     "if loss consecutively goes up for 5 epochs --> stop"
     r = [loss[-i]>loss[-i-1] for i in range(5)]
@@ -561,6 +549,7 @@ def check_stop(loss):
 def wrap(x, v, opts):
     """Wrap X and V for training or testing, in a batch manner
     """
+    x = x.unsqueeze_(-1)
     data = Data.TensorDataset(x, v)
     data = Data.DataLoader(data, batch_size=opts['n_batch'], shuffle=True)
     return data
